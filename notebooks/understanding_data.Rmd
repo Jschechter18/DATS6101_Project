@@ -1,0 +1,204 @@
+---
+title: "FitBit EDA"
+author: "Josh Schechter"
+date: "2025-02-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+# SMART QUESTIONS
+
+**1) Activity Levels:**
+What is the average number of steps taken per day by participants?
+How do activity levels vary between different days of the week?
+What is the distribution of very active, moderately active, and lightly active minutes among participants?
+
+**2) Distance and Calories:**
+What is the correlation between total distance walked and calories burned?
+How does the distance covered vary across different participants?
+What is the average distance covered per day?
+
+**3) Heart Rate:** -> NOTE: YES ENOUGH OBSERVATIONS TO DO THIS
+What are the average heart rate patterns throughout the day?
+How do heart rate patterns differ between active and sedentary periods?
+
+**4) Sleep Patterns:** -> NOTE: YES ENOUGH OBSERVATIONS TO DO THIS
+What is the average duration of sleep per night for participants?
+How do sleep patterns vary between weekdays and weekends?
+
+**5) Weight Changes:** 
+What are the trends in weight changes over the two months?
+How does physical activity correlate with weight changes?
+
+**6) Comparative Analysis:** -> NOTE: YES ENOUGH OBSERVATIONS TO DO THIS
+How do activity levels, heart rate, and sleep patterns compare between the two months of data?
+Are there any significant differences in activity levels between different groups?
+
+**7) Health Insights:** -> NOTE: YES ENOUGH OBSERVATIONS TO DO THIS
+What are the common characteristics of participants who have high levels of physical activity?
+How does sedentary time impact overall health metrics like weight and heart rate?
+
+
+SMART QUESTIONS ABOUT OUR DATA:
+**Based on the data, what are the best indicators of calorie loss?**
+  **Are step count, heart rate, and sleep related in any way to how many calories are being burned in a given time step? (observations are time steps)**
+    **How does heart rate relate to calories burned?**
+    **How does step count relate to calories burned?**
+    **How does sleep relate to calories burned?**
+
+
+## Load Month 1 data into dataframes
+
+Filepaths: 
+month1_path ="C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/file.csv"
+month2_path = "C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2"
+```{r}
+daily_activity_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/dailyActivity_merged.csv")
+
+heartrate_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/heartrate_seconds_merged.csv")
+
+hourlyCalories_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/hourlyCalories_merged.csv")
+
+
+hourlyIntensities_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/hourlyIntensities_merged.csv")
+
+
+hourlySteps_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/hourlySteps_merged.csv")
+
+minuteCaloriesNarrow_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteCaloriesNarrow_merged.csv")
+
+minuteIntensitiesNarrow_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteIntensitiesNarrow_merged.csv")
+
+minuteMETSNarrow_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteMETSNarrow_merged.csv")
+
+minuteSleep_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteSleep_merged.csv")
+
+minuteStepsNarrow_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteStepsNarrow_merged.csv")
+
+weightLogInfo_month1 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/weightLogInfo_merged.csv")
+```
+
+
+## Load Month 2 data into dataframes
+
+```{r}
+daily_activity_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/dailyActivity_merged.csv")
+
+heartrate_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/heartrate_seconds_merged.csv")
+
+hourlyCalories_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/hourlyCalories_merged.csv")
+
+
+hourlyIntensities_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/hourlyIntensities_merged.csv")
+
+
+hourlySteps_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/hourlySteps_merged.csv")
+
+minuteCaloriesNarrow_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/minuteCaloriesNarrow_merged.csv")
+
+minuteIntensitiesNarrow_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/minuteIntensitiesNarrow_merged.csv")
+
+minuteMETSNarrow_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/minuteMETSNarrow_merged.csv")
+
+minuteSleep_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/minuteSleep_merged.csv")
+
+minuteStepsNarrow_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/minuteStepsNarrow_merged.csv")
+
+weightLogInfo_month2 <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month2/weightLogInfo_merged.csv")
+```
+
+
+# Clean data
+```{r}
+#weightLogInfo_month1 <- weightLogInfo_month1 %>% distinct()
+#weightLogInfo_month2 <- weightLogInfo_month2 %>% distinct()
+
+weightLogInfo_month1 <- weightLogInfo_month1 %>%
+  group_by(Id) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+weightLogInfo_month2 <- weightLogInfo_month2 %>%
+  group_by(Id) %>%
+  filter(n() == 1) %>%
+  ungroup()
+```
+
+
+## Start Comparing Results
+
+Need to consider what to do with duplicate Id's. Sometimes the same person has 2 weights on different days. This is not ideal, as we really only want to compare one data point to another.
+
+# weight log info
+```{r}
+head(weightLogInfo_month1)
+head(weightLogInfo_month2)
+
+weightDifference <- weightLogInfo_month2$WeightPounds - weightLogInfo_month1$WeightPounds
+head(weightDifference)
+```
+
+
+# daily activity
+```{r}
+head(daily_activity_month1)
+head(daily_activity_month2)
+
+stepDifference <- daily_activity_month2$TotalSteps - daily_activity_month1$TotalSteps
+
+head(stepDifference)
+
+```
+
+
+# Column names for each dataset -> need to identify fields of importance
+```{r}
+colnames(daily_activity_month1)
+colnames(heartrate_month1)
+colnames(hourlyCalories_month1)
+colnames(hourlyIntensities_month1)
+colnames(hourlySteps_month1)
+colnames(minuteCaloriesNarrow_month1)
+colnames(minuteIntensitiesNarrow_month1)
+colnames(minuteMETSNarrow_month1)
+colnames(minuteSleep_month1)
+colnames(minuteStepsNarrow_month1)
+colnames(weightLogInfo_month1)
+```
+```{r}
+head(daily_activity_month1)
+head(heartrate_month1)
+head(hourlyCalories_month1)
+head(hourlySteps_month1)
+head(minuteCaloriesNarrow_month1)
+head(minuteIntensitiesNarrow_month1)
+head(minuteMETSNarrow_month1)
+head(minuteSleep_month1)
+head(minuteStepsNarrow_month1)
+head(weightLogInfo_month1)
+```
+
+```{r}
+head(minuteSleep_month1)
+summary(minuteSleep_month1)
+
+head(minuteStepsNarrow_month1)
+summary(minuteStepsNarrow_month1)
+
+head(heartrate_month1)
+summary(heartrate_month1)
+```
+
+
+
+
+
+
+
