@@ -79,6 +79,13 @@ interval_data <- interval_steps %>%
   left_join(interval_mets, by = c("interval_start"))
 ```
 
+# Add day of week
+# Add day of the week column
+```{r}
+interval_data <- interval_data %>%
+  mutate(day_of_week = wday(interval_start, label = TRUE, abbr = FALSE))
+```
+
 
 # Output our new dataframe to a csv, and use this csv for EDA
 ```{r}

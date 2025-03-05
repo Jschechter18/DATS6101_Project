@@ -21,7 +21,6 @@ intervals <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/da
 ```
 
 # Want to see how different features affect calories burned
-
 ```{r}
 nrow(intervals)
 ```
@@ -32,6 +31,12 @@ summary(intervals$avg_calories)
 
 # Plots
 ```{r}
+ggplot(intervals, aes(x = avg_steps, y = avg_calories, color=avg_intensity)) +
+  geom_point() +
+  ggtitle("Scatterplot of Steps vs. Calories Burned") +
+  xlab("Steps") +
+  ylab("Calories")
+
 ggplot(intervals, aes(x = avg_steps, y = avg_calories, color=avg_intensity)) +
   geom_point() +
   ggtitle("Scatterplot of Steps vs. Calories Burned") +
@@ -54,6 +59,18 @@ ggplot(intervals, aes(y = avg_steps)) +
   ggtitle("Boxplot of Steps Taken") +
   ylab("teps Taken")
 ```
+```{r}
+ggplot(intervals, aes(x=day_of_week, y = avg_calories)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Calories Burned By Day of Week") +
+  ylab("Calories Burned")
+
+ggplot(intervals, aes(x=day_of_week, y = avg_steps)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Steps Taken By Day of Week") +
+  ylab("Steps Taken")
+```
+
 
 ```{r}
 qqnorm(intervals$avg_steps, main = "QQ Steps Taken")
