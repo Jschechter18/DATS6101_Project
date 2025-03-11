@@ -17,7 +17,7 @@ library(lubridate)
 
 # Load the data
 ```{r}
-intervals <- read.csv("C:/Users/NP/OneDrive/Desktop/GWU/Intro-to-R-course/fitbit/intervals.csv")
+intervals <- read.csv("data/fitbit/timestep_data/intervals.csv")
 head(intervals)
 str(intervals)
 ```
@@ -124,3 +124,138 @@ ggplot(daily_data, aes(x = date, y = avg_steps)) +
   xlab("Date") +
   ylab("Average Steps")
 ```
+
+```{r}
+temp_df <- intervals %>%
+  filter(!is.na(day_of_week))
+
+days_of_week_averages <- temp_df %>%
+  group_by(day_of_week) %>%
+  summarise(
+    total_steps = sum(avg_steps, na.rm = TRUE),
+    total_sleep = sum(avg_sleep, na.rm = TRUE),
+    total_intensity = sum(avg_intensity, na.rm = TRUE),
+    total_calories = sum(avg_calories, na.rm = TRUE),
+    total_mets = sum(avg_mets, na.rm = TRUE)
+  )
+
+
+# Order days of week
+days_of_week_averages$day_of_week <- factor(days_of_week_averages$day_of_week,
+                                            levels = c("Monday", "Tuesday", "Wednesday",
+                                                       "Thursday", "Friday", "Saturday", "Sunday"))
+
+# Sort the rows by day of week order
+days_of_week_averages <- days_of_week_averages %>%
+  arrange(day_of_week)
+```
+
+```{r}
+ggplot(days_of_week_averages, aes(x = day_of_week, y = total_steps)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Steps per Day of the Week",
+       x = "Day of the Week",
+       y = "Total Steps") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(days_of_week_averages, aes(x = day_of_week, y = total_sleep)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Sleep per Day of the Week",
+       x = "Day of the Week",
+       y = "Total Sleep (seconds)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(days_of_week_averages, aes(x = day_of_week, y = total_intensity)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Intensity per Day of the Week",
+       x = "Day of the Week",
+       y = "Total Intensity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(days_of_week_averages, aes(x = day_of_week, y = total_calories)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Calories Burned per Day of the Week",
+       x = "Day of the Week",
+       y = "Total Calories Burned") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(days_of_week_averages, aes(x = day_of_week, y = total_mets)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total METs per Day of the Week",
+       x = "Day of the Week",
+       y = "Total METs") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+temp_df <- intervals %>%
+  filter(!is.na(hour_military))
+
+hour_of_day_totals <- temp_df %>%
+  group_by(hour_military) %>%
+  summarise(
+    total_steps = sum(avg_steps, na.rm = TRUE),
+    total_sleep = sum(avg_sleep, na.rm = TRUE),
+    total_intensity = sum(avg_intensity, na.rm = TRUE),
+    total_calories = sum(avg_calories, na.rm = TRUE),
+    total_mets = sum(avg_mets, na.rm = TRUE)
+  ) %>%
+  arrange(hour_military)
+```
+
+```{r}
+ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_steps)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Total Steps per Hour of the Day",
+       x = "Hour of the Day (Military Time)",
+       y = "Total Steps") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_sleep)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Total Sleep per Hour of the Day",
+       x = "Hour of the Day (Military Time)",
+       y = "Total Sleep (seconds)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_intensity)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Total Intensity per Hour of the Day",
+       x = "Hour of the Day (Military Time)",
+       y = "Total Intensity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_calories)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Total Calories Burned per Hour of the Day",
+       x = "Hour of the Day (Military Time)",
+       y = "Total Calories Burned") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_mets)) +
+  geom_bar(stat = "identity", fill = "coral") +
+  labs(title = "Total METs per Hour of the Day",
+       x = "Hour of the Day (Military Time)",
+       y = "Total METs") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+qqnorm(intervals$avg_steps, main = "QQ Steps Taken")
+qqline(intervals$avg_steps, col='red')
+
+qqnorm(intervals$avg_calories, main = "QQ Calories Burned")
+qqline(intervals$avg_calories, col='red')
+```
+**Data mostly falls on the line, therefore the data is likely normal**
