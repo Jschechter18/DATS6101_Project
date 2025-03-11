@@ -91,7 +91,6 @@ ggcorrplot(cor_matrix, method = "circle", lab = TRUE, colors = c("red", "white",
 # Convert interval_start to Date-Time format
 intervals$interval_start <- as.POSIXct(intervals$interval_start, format="%Y-%m-%d%H:%M:%S")
 
-# Check the conversion
 head(intervals$interval_start)
 
 # Extract additional time-based features
