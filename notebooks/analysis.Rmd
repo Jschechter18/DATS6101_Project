@@ -73,7 +73,7 @@ ggplot(steps_and_sleep, aes(x = time_only, y = opportunity_score)) +
   #theme(axis.text.x = element_text(angle = 45, hjust = 1))
   theme(axis.text.x = element_blank())
 ```
-
+**The bar plot shows the opportunity score throughout various time intervals, where higher bar shows better time slots for marketing ads (thus higher opportunity scores). This shows where ad placement times have higher opportunity periods based on a combination of step/sleep data**
 
 ```{r}
 steps_and_sleep %>%
@@ -103,3 +103,4 @@ summary(anova_test)
 post_cod_result <- TukeyHSD(anova_test)
 post_cod_result
 ```
+** Interpreting Tukey's Honest Significant Difference Test: ** This is performed after the ANOVA test to see which specific time intervals have significantly different opportunity scores. If the confidence interval of a time pair doesn't include a 0, it means their opportunity scores are significantly different. Large absolute differences in means show that some intervals are greater for marketing opportunities. Post-hoc Tukey helps show the exact time intervals where marketing efforts should be highlighted instead of knowing where the differences exist (as analyzed by ANOVA).
