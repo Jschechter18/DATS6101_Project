@@ -33,38 +33,43 @@ mets <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fi
 
 # Ensure time is correctly formated
 ```{r}
-steps$ActivityMinute <- parse_date_time(steps$ActivityMinute, orders = c("mdy HMS", "mdy HM"))
-heart_rate$ActivityMinute <- parse_date_time(heart_rate$Time, orders = c("mdy HMS", "mdy HM"))
-sleep$ActivityMinute <- parse_date_time(sleep$date, orders = c("mdy HMS", "mdy HM"))
-intensity$ActivityMinute <- parse_date_time(intensity$ActivityMinute, orders = c("mdy HMS", "mdy HM"))
-calories$ActivityMinute <- parse_date_time(calories$ActivityMinute, orders = c("mdy HMS", "mdy HM"))
-mets$ActivityMinute <- parse_date_time(mets$ActivityMinute, orders = c("mdy HMS", "mdy HM"))
+# , orders = c("mdy HMS", "mdy HM")
+steps$ActivityMinute <- parse_date_time(steps$ActivityMinute, orders = "mdy IMS p")
+heart_rate$ActivityMinute <- parse_date_time(heart_rate$Time, orders = "mdy IMS p")
+sleep$ActivityMinute <- parse_date_time(sleep$date, orders = "mdy IMS p")
+intensity$ActivityMinute <- parse_date_time(intensity$ActivityMinute, "mdy IMS p")
+calories$ActivityMinute <- parse_date_time(calories$ActivityMinute, "mdy IMS p")
+mets$ActivityMinute <- parse_date_time(mets$ActivityMinute, orders = "mdy IMS p")
+```
+
+```{r}
+steps$HourMilitary <- format(steps$ActivityMinute, "%H:%M")
 ```
 
 # Summarize data to 8-minute intervals
 ```{r}
 interval_steps <- steps %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "5 minutes")) %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_steps = mean(Steps, na.rm = TRUE), .groups = "drop") 
 
 interval_sleep <- sleep %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "5 minutes")) %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_sleep = mean(value, na.rm = TRUE), .groups = "drop")
 
 interval_intensity <- intensity %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "5 minutes")) %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_intensity = mean(Intensity, na.rm = TRUE), .groups = "drop")
 
 interval_calories <- calories %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "5 minutes")) %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_calories = mean(Calories, na.rm = TRUE), .groups = "drop")
 
 interval_mets <- mets %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "5 minutes")) %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_mets = mean(METs, na.rm = TRUE), .groups = "drop")
 ```
@@ -81,9 +86,14 @@ interval_data <- interval_steps %>%
 
 # Add day of week
 # Add day of the week column
+# Add a military time column
 ```{r}
 interval_data <- interval_data %>%
   mutate(day_of_week = wday(interval_start, label = TRUE, abbr = FALSE))
+
+
+interval_data <- interval_data %>%
+  mutate(hour_military = format(interval_start, "%H"))
 ```
 
 
