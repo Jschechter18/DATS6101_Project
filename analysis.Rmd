@@ -1,0 +1,192 @@
+---
+title: "EXPLORATORY DATA ANALYSIS"
+output: html_document
+date: "2025-03-10"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+```
+
+# Load the data
+```{r}
+intervals <- read.csv("C:/Users/NP/OneDrive/Desktop/GWU/Intro-to-R-course/fitbit/intervals.csv")
+head(intervals)
+str(intervals)
+```
+
+# Want to see how different features affect calories burned
+```{r}
+nrow(intervals)
+```
+
+```{r}
+summary(intervals$avg_calories)
+```
+
+# Plots
+```{r}
+ggplot(intervals, aes(x = avg_steps, y = avg_calories, color=avg_intensity)) +
+  geom_point() +
+  ggtitle("Scatterplot of Steps vs. Calories Burned") +
+  xlab("Steps") +
+  ylab("Calories")
+
+ggplot(intervals, aes(x = avg_steps, y = avg_calories, color=avg_intensity)) +
+  geom_point() +
+  ggtitle("Scatterplot of Steps vs. Calories Burned") +
+  xlab("Steps") +
+  ylab("Calories")
+
+ggplot(intervals, aes(x = avg_steps, y = avg_mets, color=avg_intensity)) +
+  geom_point() +
+  ggtitle("Scatterplot of Steps vs. METs") +
+  xlab("Steps") +
+  ylab("METs")
+
+ggplot(intervals, aes(y = avg_calories)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Boxplot of Calories Burned") +
+  ylab("Calories Burned")
+
+ggplot(intervals, aes(y = avg_steps)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Boxplot of Steps Taken") +
+  ylab("teps Taken")
+```
+```{r}
+ggplot(intervals, aes(x=day_of_week, y = avg_calories)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Calories Burned By Day of Week") +
+  ylab("Calories Burned")
+
+ggplot(intervals, aes(x=day_of_week, y = avg_steps)) +
+  geom_boxplot(fill = "green", color = "black") +
+  ggtitle("Steps Taken By Day of Week") +
+  ylab("Steps Taken")
+```
+
+
+```{r}
+qqnorm(intervals$avg_steps, main = "QQ Steps Taken")
+qqline(intervals$avg_steps, col='red')
+
+qqnorm(intervals$avg_calories, main = "QQ Calories Burned")
+qqline(intervals$avg_calories, col='red')
+```
+**Data mostly falls on the line, therefore the data is likely normal**
+
+
+
+
+
+```{r}
+intervals$day_of_week <- factor(intervals$day_of_week, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+```
+
+
+```{r}
+cor(intervals$avg_steps, intervals$avg_calories)
+cor(intervals$avg_steps, intervals$avg_mets)
+cor(intervals$avg_calories, intervals$avg_mets)
+```
+**There is a positive correlation between steps and calories burned, steps and METs, and calories burned and METs**
+
+```{r}
+# correlation matrix
+correlation_matrix <- cor(intervals[, c("avg_steps", "avg_calories", "avg_mets")])
+correlation_matrix
+
+library(ggcorrplot)
+
+ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
+
+```
+**The correlation matrix shows that there is a positive correlation between steps and calories burned, steps and METs, and calories burned and METs**
+
+**The correlation matrix also shows that the correlation between steps and calories burned is the strongest**
+
+
+```{r}
+# correlation plot
+ggplot(intervals, aes(x = avg_steps, y = avg_calories)) +
+  geom_point() +
+  ggtitle("Scatterplot of Steps vs. Calories Burned") +
+  xlab("Steps") +
+  ylab("Calories") +
+  geom_smooth(method = "lm")
+```
+
+
+```{r}
+ggplot(intervals, aes(x = avg_steps)) +
+  geom_histogram(fill = "yellow", color = "black", bins = 30) +
+  ggtitle("Distribution of Steps Taken") +
+  xlab("Steps")
+
+ggplot(intervals, aes(x = avg_calories)) +
+  geom_histogram(fill = "red", color = "black", bins = 30) +
+  ggtitle("Distribution of Calories Burned") +
+  xlab("Calories Burned")
+```
+
+# correlation matrix
+```{r}
+# Compute correlation matrix
+cor_matrix <- cor(intervals[, c("avg_steps", "avg_sleep", "avg_intensity", "avg_calories", "avg_mets")],
+                  use = "complete.obs")
+cor_matrix
+
+# Visualizing correlation matrix
+library(ggcorrplot)
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, colors = c("red", "white", "blue"))
+
+```
+
+# time series plot
+```{r}
+
+# Convert interval_start to Date-Time format
+intervals$interval_start <- as.POSIXct(intervals$interval_start, format="%Y-%m-%d%H:%M:%S")
+
+# Check the conversion
+head(intervals$interval_start)
+
+# Extract additional time-based features
+intervals$hour <- hour(intervals$interval_start)
+intervals$day_of_week <- weekdays(intervals$interval_start)
+intervals$month <- month(intervals$interval_start)
+intervals$year <- year(intervals$interval_start)
+
+head(intervals)
+
+```
+
+
+```{r}
+# Aggregating data by day
+daily_data <- intervals %>%
+  group_by(date = as.Date(interval_start)) %>%
+  summarise(
+    avg_steps = mean(avg_steps, na.rm = TRUE),
+    avg_sleep = mean(avg_sleep, na.rm = TRUE),
+    avg_calories = mean(avg_calories, na.rm = TRUE),
+    avg_mets = mean(avg_mets, na.rm = TRUE)
+  )
+
+head(daily_data)
+
+# Plotting steps over time
+ggplot(daily_data, aes(x = date, y = avg_steps)) +
+  geom_line() +
+  ggtitle("Daily Average Steps Over Time") +
+  xlab("Date") +
+  ylab("Average Steps")
+```
