@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(lubridate)
+library(ggcorrplot)
 ```
 
 # Load the data
@@ -21,252 +22,84 @@ intervals <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/da
 
 head(intervals)
 str(intervals)
+summary(intervals$avg_steps)
+summary(intervals$avg_sleep)
 ```
-
+# Clean the data
 ```{r}
+intervals <- na.omit(intervals)
+
+#intervals$time_only <- format(as.POSIXct(intervals$interval_start), format = "%H:%M:%S")
+intervals$time_only <- ifelse(nchar(intervals$interval_start) >= 19,
+                       substr(intervals$interval_start, 12, 19),
+                       "00:00:00")
+
 intervals$day_of_week <- factor(intervals$day_of_week, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
 ```
 
-
+# 
 ```{r}
-cor(intervals$avg_steps, intervals$avg_calories)
-cor(intervals$avg_steps, intervals$avg_mets)
-cor(intervals$avg_calories, intervals$avg_mets)
-```
-**There is a positive correlation between steps and calories burned, steps and METs, and calories burned and METs**
-
-```{r}
-# correlation matrix
-correlation_matrix <- cor(intervals[, c("avg_steps", "avg_calories", "avg_mets")])
-correlation_matrix
-
-library(ggcorrplot)
-
-ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
-
-```
-**The correlation matrix shows that there is a positive correlation between steps and calories burned, steps and METs, and calories burned and METs**
-
-**The correlation matrix also shows that the correlation between steps and calories burned is the strongest**
-
-
-```{r}
-# correlation plot
-ggplot(intervals, aes(x = avg_steps, y = avg_calories)) +
-  geom_point() +
-  ggtitle("Scatterplot of Steps vs. Calories Burned") +
-  xlab("Steps") +
-  ylab("Calories") +
-  geom_smooth(method = "lm")
+steps_and_sleep <- intervals 
 ```
 
-
+# Normalize steps and sleep
 ```{r}
-ggplot(intervals, aes(x = avg_steps)) +
-  geom_histogram(fill = "yellow", color = "black", bins = 30) +
-  ggtitle("Distribution of Steps Taken") +
-  xlab("Steps")
-
-ggplot(intervals, aes(x = avg_calories)) +
-  geom_histogram(fill = "red", color = "black", bins = 30) +
-  ggtitle("Distribution of Calories Burned") +
-  xlab("Calories Burned")
-```
-
-# correlation matrix
-```{r}
-# Compute correlation matrix
-cor_matrix <- cor(intervals[, c("avg_steps", "avg_sleep", "avg_intensity", "avg_calories", "avg_mets")],
-                  use = "complete.obs")
-cor_matrix
-
-# Visualizing correlation matrix
-library(ggcorrplot)
-ggcorrplot(cor_matrix, method = "circle", lab = TRUE, colors = c("red", "white", "blue"))
-
-```
-
-# time series plot
-```{r}
-
-# Convert interval_start to Date-Time format
-intervals$interval_start <- as.POSIXct(intervals$interval_start, format="%Y-%m-%d%H:%M:%S")
-
-head(intervals$interval_start)
-
-# Extract additional time-based features
-intervals$hour <- hour(intervals$interval_start)
-intervals$day_of_week <- weekdays(intervals$interval_start)
-intervals$month <- month(intervals$interval_start)
-intervals$year <- year(intervals$interval_start)
-
-head(intervals)
-
-```
-
-
-```{r}
-# Aggregating data by day
-daily_data <- intervals %>%
-  group_by(date = as.Date(interval_start)) %>%
-  summarise(
-    avg_steps = mean(avg_steps, na.rm = TRUE),
-    avg_sleep = mean(avg_sleep, na.rm = TRUE),
-    avg_calories = mean(avg_calories, na.rm = TRUE),
-    avg_mets = mean(avg_mets, na.rm = TRUE)
+steps_and_sleep <- steps_and_sleep %>%
+  mutate(
+    norm_steps = (avg_steps - min(avg_steps)) / (max(avg_steps) - min(avg_steps)),
+    norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep))
   )
-
-head(daily_data)
-
-# Plotting steps over time
-ggplot(daily_data, aes(x = date, y = avg_steps)) +
-  geom_line() +
-  ggtitle("Daily Average Steps Over Time") +
-  xlab("Date") +
-  ylab("Average Steps")
 ```
-**The time series plot shows that the average number of steps taken fluctuates over time **
-**But the number of steps taken seems to increase over time**
 
-
-
-# TODO: Lincoln, the next few chunks have some plots. Could you write a few lines that analyze them?
+# Calculate opportunity score
 ```{r}
-temp_df <- intervals %>%
-  filter(!is.na(day_of_week))
+weight_steps <- 0.2
+weight_sleep <- 0.8
 
-days_of_week_averages <- temp_df %>%
-  group_by(day_of_week) %>%
-  summarise(
-    total_steps = sum(avg_steps, na.rm = TRUE),
-    total_sleep = sum(avg_sleep, na.rm = TRUE),
-    total_intensity = sum(avg_intensity, na.rm = TRUE),
-    total_calories = sum(avg_calories, na.rm = TRUE),
-    total_mets = sum(avg_mets, na.rm = TRUE)
+steps_and_sleep <- steps_and_sleep %>%
+  mutate(
+    opportunity_score = weight_steps * (1 - norm_steps) + weight_sleep * (1 - norm_sleep)  # lower steps and sleep = higher score
   )
+```
+**opportunity_score: ** The higher the score, the more ideal the time-slot is for a marketing ad. We chose to weight sleep at 0.8 and steps at 0.2 due to the fact that if a person is sleeping there is no chance they will see the ad.
+
+```{r}
+ggplot(steps_and_sleep, aes(x = time_only, y = opportunity_score)) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Opportunity Score by 10 Minute Interval (Best Time for TV Ads)",
+       x = "10 Second Intervals (Military Time)",
+       y = "Opportunity Score") +
+  #scale_x_discrete(breaks = steps_and_sleep$time_only[seq(1, length(steps_and_sleep$time_only), by = 1000)]) +
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_blank())
+```
 
 
-# Order days of week
-days_of_week_averages$day_of_week <- factor(days_of_week_averages$day_of_week,
-                                            levels = c("Monday", "Tuesday", "Wednesday",
-                                                       "Thursday", "Friday", "Saturday", "Sunday"))
-
-# Sort the rows by day of week order
-days_of_week_averages <- days_of_week_averages %>%
-  arrange(day_of_week)
+```{r}
+steps_and_sleep %>%
+  arrange(desc(opportunity_score)) %>%
+  select(time_only, opportunity_score)
 ```
 
 ```{r}
-ggplot(days_of_week_averages, aes(x = day_of_week, y = total_steps)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Total Steps per Day of the Week",
-       x = "Day of the Week",
-       y = "Total Steps") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(days_of_week_averages, aes(x = day_of_week, y = total_sleep)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Total Sleep per Day of the Week",
-       x = "Day of the Week",
-       y = "Total Sleep (seconds)") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(days_of_week_averages, aes(x = day_of_week, y = total_intensity)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Total Intensity per Day of the Week",
-       x = "Day of the Week",
-       y = "Total Intensity") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(days_of_week_averages, aes(x = day_of_week, y = total_calories)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Total Calories Burned per Day of the Week",
-       x = "Day of the Week",
-       y = "Total Calories Burned") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(days_of_week_averages, aes(x = day_of_week, y = total_mets)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Total METs per Day of the Week",
-       x = "Day of the Week",
-       y = "Total METs") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+qqnorm(steps_and_sleep$opportunity_score)
+qqline(steps_and_sleep$opportunity_score, col = "red")
 ```
+**QQ Norm Analysis:** Data mostly falls on the line, therefore the data is reasonably normal. Based on our EDA, the more important plot is the Steps Taken, as it will best answer our SMART question.**
 
+## Statistical Testing
+
+# ANOVA Test For Opportunity Score
+**Goal of this test is to determine if there is a meaningful difference between the different hours opportunity scores**
 ```{r}
-temp_df <- intervals %>%
-  filter(!is.na(hour_military))
-
-hour_of_day_totals <- temp_df %>%
-  group_by(hour_military) %>%
-  summarise(
-    total_steps = sum(avg_steps, na.rm = TRUE),
-    total_sleep = sum(avg_sleep, na.rm = TRUE),
-    total_intensity = sum(avg_intensity, na.rm = TRUE),
-    total_calories = sum(avg_calories, na.rm = TRUE),
-    total_mets = sum(avg_mets, na.rm = TRUE)
-  ) %>%
-  arrange(hour_military)
+anova_test = aov(opportunity_score ~ factor(time_only), data = steps_and_sleep)
+summary(anova_test)
 ```
+**Interpreting the ANOVA Test: ** Sum of squares between each interval is larger than the sum of squares within the intervals. Additionally, the p-value < 0.001 and therefore we know that the 10 minute intervals are statistically significant when it comes to marketing opportunity (per the score we created). Note, this only tells us that some times are better than others.
 
+
+# Post-hoc Turkey
 ```{r}
-ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_steps)) +
-  geom_bar(stat = "identity", fill = "coral") +
-  labs(title = "Total Steps per Hour of the Day",
-       x = "Hour of the Day (Military Time)",
-       y = "Total Steps") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_sleep)) +
-  geom_bar(stat = "identity", fill = "coral") +
-  labs(title = "Total Sleep per Hour of the Day",
-       x = "Hour of the Day (Military Time)",
-       y = "Total Sleep (seconds)") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_intensity)) +
-  geom_bar(stat = "identity", fill = "coral") +
-  labs(title = "Total Intensity per Hour of the Day",
-       x = "Hour of the Day (Military Time)",
-       y = "Total Intensity") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_calories)) +
-  geom_bar(stat = "identity", fill = "coral") +
-  labs(title = "Total Calories Burned per Hour of the Day",
-       x = "Hour of the Day (Military Time)",
-       y = "Total Calories Burned") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_mets)) +
-  geom_bar(stat = "identity", fill = "coral") +
-  labs(title = "Total METs per Hour of the Day",
-       x = "Hour of the Day (Military Time)",
-       y = "Total METs") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+post_cod_result <- TukeyHSD(anova_test)
+post_cod_result
 ```
-
-# TODO:
-# Could we maybe break even more? What time of what day is the most active? Least active? What visualizations would be good for this?
-```{r}
-
-```
-
-```{r}
-qqnorm(intervals$avg_steps, main = "QQ Steps Taken")
-qqline(intervals$avg_steps, col='red')
-
-qqnorm(intervals$avg_calories, main = "QQ Calories Burned")
-qqline(intervals$avg_calories, col='red')
-```
-**Data mostly falls on the line, therefore the data is likely normal. Based on our EDA, the more important plot is the Steps Taken, as it will best answer our SMART question.**
