@@ -124,6 +124,21 @@ ggplot(daily_data, aes(x = date, y = avg_steps)) +
   xlab("Date") +
   ylab("Average Steps")
 ```
+**The time series plot shows that the average number of steps taken fluctuates over time **
+**But the number of steps taken seems to increase over time**
+
+```{r}
+# scatter plot
+
+ggplot(intervals, aes(x = hour, y = avg_steps, color = day_of_week)) +
+  geom_point() +
+  ggtitle("Average Steps by Hour and Day of the Week") +
+  xlab("Hour") +
+  ylab("Average Steps")
+
+```
+**The graph plot indicates what time of day and what days of the week are people most active**
+**people are most active on tuesday's in the evening time**
 
 ```{r}
 temp_df <- intervals %>%
