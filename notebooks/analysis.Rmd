@@ -90,7 +90,7 @@ ggcorrplot(cor_matrix, method = "circle", lab = TRUE, colors = c("red", "white",
 **The graph shows that there is a positive correlation between steps and calories burned, steps and METs, and calories burned and METs**
 **The correlation matrix also shows that the correlation between steps and calories burned is the strongest**
 
-# time series plot
+# time series analysis
 ```{r}
 
 # Convert interval_start to Date-Time format
@@ -107,7 +107,18 @@ intervals$year <- year(intervals$interval_start)
 head(intervals)
 
 ```
+**The data has been converted to Date-Time format and additional time-based features have been extracted**
 
+```{r}
+# Plotting steps over time
+ggplot(intervals, aes(x = interval_start, y = avg_steps)) +
+  geom_line() +
+  ggtitle("Steps Over Time") +
+  xlab("Date") +
+  ylab("Steps")
+
+
+```
 
 
 ```{r}
@@ -132,3 +143,16 @@ ggplot(daily_data, aes(x = date, y = avg_steps)) +
 ```
 **The time series plot shows that the average number of steps taken fluctuates over time **
 **But the number of steps taken seems to increase over time**
+
+```{r}
+# scatter plot
+
+ggplot(intervals, aes(x = hour, y = avg_steps, color = day_of_week)) +
+  geom_point() +
+  ggtitle("Average Steps by Hour and Day of the Week") +
+  xlab("Hour") +
+  ylab("Average Steps")
+
+```
+**The graph plot indicates what time of day and what days of the week are people most active**
+**people are most active on tuesday's in the evening time**
