@@ -17,7 +17,7 @@ library(lubridate)
 
 # Load the data
 ```{r}
-intervals <- read.csv("C:/Users/NP/OneDrive/Desktop/GWU/Intro-to-R/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
+intervals <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
 
 head(intervals)
 str(intervals)
@@ -128,19 +128,9 @@ ggplot(daily_data, aes(x = date, y = avg_steps)) +
 **The time series plot shows that the average number of steps taken fluctuates over time **
 **But the number of steps taken seems to increase over time**
 
-```{r}
-# scatter plot
 
-ggplot(intervals, aes(x = hour, y = avg_steps, color = day_of_week)) +
-  geom_point() +
-  ggtitle("Average Steps by Hour and Day of the Week") +
-  xlab("Hour") +
-  ylab("Average Steps")
 
-```
-**The graph plot indicates what time of day and what days of the week are people most active**
-**people are most active on tuesday's in the evening time**
-
+# TODO: Lincoln, the next few chunks have some plots. Could you write a few lines that analyze them?
 ```{r}
 temp_df <- intervals %>%
   filter(!is.na(day_of_week))
@@ -266,6 +256,11 @@ ggplot(hour_of_day_totals, aes(x = as.factor(hour_military), y = total_mets)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+# TODO:
+# Could we maybe break even more? What time of what day is the most active? Least active? What visualizations would be good for this?
+```{r}
+
+```
 
 ```{r}
 qqnorm(intervals$avg_steps, main = "QQ Steps Taken")
@@ -274,4 +269,4 @@ qqline(intervals$avg_steps, col='red')
 qqnorm(intervals$avg_calories, main = "QQ Calories Burned")
 qqline(intervals$avg_calories, col='red')
 ```
-**Data mostly falls on the line, therefore the data is likely normal**
+**Data mostly falls on the line, therefore the data is likely normal. Based on our EDA, the more important plot is the Steps Taken, as it will best answer our SMART question.**
