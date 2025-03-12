@@ -104,3 +104,11 @@ post_cod_result <- TukeyHSD(anova_test)
 post_cod_result
 ```
 ** Interpreting Tukey's Honest Significant Difference Test: ** This is performed after the ANOVA test to see which specific time intervals have significantly different opportunity scores. If the confidence interval of a time pair doesn't include a 0, it means their opportunity scores are significantly different. Large absolute differences in means show that some intervals are greater for marketing opportunities. Post-hoc Tukey helps show the exact time intervals where marketing efforts should be highlighted instead of knowing where the differences exist (as analyzed by ANOVA).
+
+# Correlation Matrix
+```{r}
+library(ggcorrplot)
+correlation_matrix <- cor(steps_and_sleep[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity","avg_mets")])
+ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
+```
+**Correlation Analysis: The correlation matrix shows that there is a strong positive correlation between steps and calories burned, steps and intensity, and steps and METs. There is a weak positive correlation between steps and sleep. \**
