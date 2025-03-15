@@ -1,0 +1,35 @@
+'''{r}
+steps_and_sleep$time_category <- cut(strptime(steps_and_sleep$time_only, "%H:%M:%S")$hour,
+                                     breaks = c(-1, 6, 12, 18, 24),
+                                     labels = c("Night", "Morning", "Afternoon", "Evening"))
+
+table_opportunity <- table(steps_and_sleep$time_category, steps_and_sleep$opportunity_score > median(steps_and_sleep$opportunity_score))
+
+chisq.test(table_opportunity)
+```
+*This is for chi-squared*
+
+'''{r}
+steps_and_sleep$weekend <- ifelse(steps_and_sleep$day_of_week %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+table_weekend <- table(steps_and_sleep$weekend, steps_and_sleep$opportunity_score > median(steps_and_sleep$opportunity_score))
+chisq.test(table_weekend)
+```
+*Comparison between weekend/weekday*
+
+'''{r}
+ggplot(steps_and_sleep, aes(x = opportunity_score)) +
+  geom_density(fill = "blue", alpha = 0.3) +
+  labs(title = "Density Plot of Opportunity Scores",
+       x = "Opportunity Score",
+       y = "Density")
+```
+*Density plot*
+
+```{r}
+ggplot(steps_and_sleep, aes(x = factor(substr(time_only, 1, 2)), y = opportunity_score)) +
+  geom_boxplot(fill = "orange") +
+  labs(title = "Opportunity Score Distribution by Hour",
+       x = "Hour of the Day",
+       y = "Opportunity Score")
+```
+*Boxplot of opportunity score by hour intervals*
