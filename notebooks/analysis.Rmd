@@ -72,6 +72,19 @@ ggplot(steps_and_sleep, aes(x = time_only, y = opportunity_score)) +
   #scale_x_discrete(breaks = steps_and_sleep$time_only[seq(1, length(steps_and_sleep$time_only), by = 1000)]) +
   #theme(axis.text.x = element_text(angle = 45, hjust = 1))
   theme(axis.text.x = element_blank())
+
+steps_and_sleep_summary <- steps_and_sleep %>%
+  group_by(time_only) %>%
+  summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE))
+
+# Mean opportunity score by time interval
+ggplot(steps_and_sleep_summary, aes(x = time_only, y = mean_opportunity_score)) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Average Opportunity Score by 10 Minute Interval (Best Time for TV Ads)",
+       x = "10 Second Intervals (Military Time)",
+       y = "Mean Opportunity Score") +
+  theme(axis.text.x = element_blank())
+
 ```
 **The bar plot shows the opportunity score throughout various time intervals, where higher bar shows better time slots for marketing ads (thus higher opportunity scores). This shows where ad placement times have higher opportunity periods based on a combination of step/sleep data**
 
