@@ -125,3 +125,14 @@ correlation_matrix <- cor(steps_and_sleep[, c("avg_steps", "avg_sleep", "avg_cal
 ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 **Correlation Analysis: The correlation matrix shows that there is a strong positive correlation between steps and calories burned, steps and intensity, and steps and METs. There is a weak positive correlation between steps and sleep. \**
+
+# Boxplot
+```{r}
+ggplot(intervals, aes(x = factor(hour), y = opportunity_score)) +
+  geom_boxplot(fill = "lightblue", outlier.color = "red") +
+  labs(title = "Distribution of Opportunity Scores by Hour",
+       x = "Hour of the Day (24-hour format)",
+       y = "Opportunity Score") +
+  theme_minimal()
+```
+**Shows median opportunity score while showing variability (outliers)**
