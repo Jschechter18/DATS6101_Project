@@ -43,6 +43,11 @@ mets$ActivityMinute <- parse_date_time(mets$ActivityMinute, orders = "mdy IMS p"
 ```
 
 ```{r}
+sleep$value <- ifelse(sleep$value == 1, 1, 0)
+sleep
+```
+
+```{r}
 steps$HourMilitary <- format(steps$ActivityMinute, "%H:%M")
 ```
 

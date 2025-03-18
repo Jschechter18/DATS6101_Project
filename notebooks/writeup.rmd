@@ -30,9 +30,17 @@ intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
                        "00:00:00")
 ```
 
+**Introduction**
+
+
+**Resulting Dataframe**
+```{r}
+head(intervals_df)
+```
+
 ## Setup (Josh)
 
-# 
+
 ```{r}
 # Aggregate by hour
 hourly_summary_df <- intervals_df %>%
@@ -46,20 +54,26 @@ hourly_summary_df <- intervals_df %>%
   )
 ```
 
+```{r}
+hourly_summary_df
+```
+
+
+**Initial time series plots**
 ## Time series graph of individual features (need to write new code for this)
 ```{r}
-# 1. Average Steps
-ggplot(hourly_summary_df, aes(x = hour_military, y = avg_steps)) +
-  geom_line(size = 1.2) +
-  geom_point() +
-  labs(title = "Average Steps by Hour of Day", x = "Hour", y = "Average Steps") +
-  theme_minimal()
-
-# 2. Average Sleep
+# 1. Average Sleep
 ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
   geom_line(size = 1.2) +
   geom_point() +
   labs(title = "Average Sleep by Hour of Day", x = "Hour", y = "Average Sleep") +
+  theme_minimal()
+
+# 2. Average Steps
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_steps)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Steps by Hour of Day", x = "Hour", y = "Average Steps") +
   theme_minimal()
 
 # 3. Average Cals
@@ -84,6 +98,7 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
   theme_minimal()
 ```
 
+**Correlation Matrix** To help pick out important features
 ## Correlation Matrix of All Features of Interest
 ```{r}
 correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity","avg_mets")])
@@ -94,12 +109,12 @@ ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```{r}
 intervals_df <- intervals_df %>%
   mutate(
-    norm_steps = (avg_steps - min(avg_steps)) / (max(avg_steps) - min(avg_steps)),
     norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
     norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
   )
 ```
 
+**Break down opportunity Score**
 ## Opportunity Score
 ```{r}
 weight_intensity <- 0.4
@@ -110,11 +125,11 @@ intervals_df <- intervals_df %>%
     #opportunity_score = weight_steps * (1 - norm_steps)^0.5 + weight_sleep * (1 - norm_sleep)^0.5  # lower steps and sleep = higher score
     opportunity_score = weight_intensity*(norm_intensity) + weight_sleep*(norm_sleep)
   )
-
-head(intervals_df$opportunity_score)
 ```
-```{r}
 
+**Opportunity Score Results**
+```{r}
+head(intervals_df)
 ```
 
 ## EDA (Lincoln)
