@@ -18,26 +18,103 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(lubridate)
+library(ggcorrplot)
 ```
 
 ## Load Intervals
 ```{r}
 intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
+intervals_df <- na.omit(intervals_df)
+intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
+                       substr(intervals_df$interval_start, 12, 19),
+                       "00:00:00")
 ```
 
 ## Setup (Josh)
 
-## Time series graph of individual features
+# 
 ```{r}
+# Aggregate by hour
+hourly_summary_df <- intervals_df %>%
+  group_by(hour_military) %>%
+  summarise(
+    avg_steps = mean(avg_steps, na.rm = TRUE),
+    avg_sleep = mean(avg_sleep, na.rm = TRUE),
+    avg_intensity = mean(avg_intensity, na.rm = TRUE),
+    avg_calories = mean(avg_calories, na.rm = TRUE),
+    avg_mets = mean(avg_mets, na.rm = TRUE),
+  )
+```
+
+## Time series graph of individual features (need to write new code for this)
+```{r}
+# 1. Average Steps
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_steps)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Steps by Hour of Day", x = "Hour", y = "Average Steps") +
+  theme_minimal()
+
+# 2. Average Sleep
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Sleep by Hour of Day", x = "Hour", y = "Average Sleep") +
+  theme_minimal()
+
+# 3. Average Cals
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_calories)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Calories by Hour of Day", x = "Hour", y = "Average Calories") +
+  theme_minimal()
+
+# 4. Average METs
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_mets)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average METs by Hour of Day", x = "Hour", y = "Average METs") +
+  theme_minimal()
+
+# 5. Average Intensity
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Intensity by Hour of Day", x = "Hour", y = "Average Intensity") +
+  theme_minimal()
 ```
 
 ## Correlation Matrix of All Features of Interest
 ```{r}
+correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity","avg_mets")])
+ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
+# Normalize Features of Interest
+```{r}
+intervals_df <- intervals_df %>%
+  mutate(
+    norm_steps = (avg_steps - min(avg_steps)) / (max(avg_steps) - min(avg_steps)),
+    norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
+    norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
+  )
+```
 
 ## Opportunity Score
 ```{r}
+weight_intensity <- 0.4
+weight_sleep <- 0.6
+
+intervals_df <- intervals_df %>%
+  mutate(
+    #opportunity_score = weight_steps * (1 - norm_steps)^0.5 + weight_sleep * (1 - norm_sleep)^0.5  # lower steps and sleep = higher score
+    opportunity_score = weight_intensity*(norm_intensity) + weight_sleep*(norm_sleep)
+  )
+
+head(intervals_df$opportunity_score)
+```
+```{r}
+
 ```
 
 ## EDA (Lincoln)
@@ -48,10 +125,23 @@ intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project
 
 ## Bar Graph
 ```{r}
+intervals_summary <- intervals_df %>%
+  group_by(time_only) %>%
+  summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE))
+
+# Mean opportunity score by time interval
+ggplot(intervals_summary, aes(x = time_only, y = mean_opportunity_score)) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Average Opportunity Score by 10 Minute Interval (Best Time for TV Ads)",
+       x = "10 Second Intervals (Military Time)",
+       y = "Mean Opportunity Score") +
+  theme(axis.text.x = element_blank())
 ```
 
 ## QQ Plot
 ```{r}
+qqnorm(intervals_df$opportunity_score)
+qqline(intervals_df$opportunity_score, col = "red")
 ```
 
 ## Histogram
