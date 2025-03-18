@@ -1,0 +1,82 @@
+---
+title: "writeup.rmd"
+author: "Josh Schechter"
+date: "2025-03-18"
+output: html_document
+code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/
+# This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
+
+## Import Libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+```
+
+## Load Intervals
+```{r}
+intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
+```
+
+## Setup (Josh)
+
+## Time series graph of individual features
+```{r}
+```
+
+## Correlation Matrix of All Features of Interest
+```{r}
+```
+
+
+## Opportunity Score
+```{r}
+```
+
+## EDA (Lincoln)
+
+## Boxplot
+```{r}
+```
+
+## Bar Graph
+```{r}
+```
+
+## QQ Plot
+```{r}
+```
+
+## Histogram
+```{r}
+```
+
+
+## Statistical Analysis (Naiyani)
+
+## Kruskal Wallis
+```{r}
+```
+
+## Chi Square
+# Need to write new code for this
+```{r}
+```
+
+## Post Hoc
+```{r}
+```
+
+## Conclusions
+# Final Slides
+
+
+
+
