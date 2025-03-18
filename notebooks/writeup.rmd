@@ -10,10 +10,8 @@ code_folding: hide
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/
-# This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
+# Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/ This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
 
-## Import Libraries
 ```{r}
 library(tidyverse)
 library(ggplot2)
@@ -21,7 +19,7 @@ library(lubridate)
 library(ggcorrplot)
 ```
 
-## Load Intervals
+# Load Intervals
 ```{r}
 intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
 intervals_df <- na.omit(intervals_df)
@@ -30,17 +28,18 @@ intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
                        "00:00:00")
 ```
 
-**Introduction**
+**Introduction** SMART Questions, about the dataset, etc.
 
+**Data Preprocessing** Data cleaning, etc.
 
-**Resulting Dataframe**
+**Resulting Dataframe** Explain the dataframe columns, and what they represent
 ```{r}
 head(intervals_df)
+summary(intervals_df)
 ```
 
 ## Setup (Josh)
-
-
+ What do we know about this dataset?  What are the limitations of the dataset?  How was the information gathered?  What analysis has already been completed related to the content in your dataset?  How did the research you gathered contribute to your question development?  What additional information would be beneficial?
 ```{r}
 # Aggregate by hour
 hourly_summary_df <- intervals_df %>%
@@ -50,17 +49,17 @@ hourly_summary_df <- intervals_df %>%
     avg_sleep = mean(avg_sleep, na.rm = TRUE),
     avg_intensity = mean(avg_intensity, na.rm = TRUE),
     avg_calories = mean(avg_calories, na.rm = TRUE),
-    avg_mets = mean(avg_mets, na.rm = TRUE),
   )
 ```
 
+**Hourly Summary** Explain that you broke this down into bins by hour for visual trend purposes
 ```{r}
-hourly_summary_df
+summary(hourly_summary_df)
 ```
 
 
-**Initial time series plots**
-## Time series graph of individual features (need to write new code for this)
+**Initial time series plots** Show the time series plots for individual quantitative features. Shows us individual trends
+# Time series graph of individual features (need to write new code for this)
 ```{r}
 # 1. Average Sleep
 ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
@@ -83,14 +82,7 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = avg_calories)) +
   labs(title = "Average Calories by Hour of Day", x = "Hour", y = "Average Calories") +
   theme_minimal()
 
-# 4. Average METs
-ggplot(hourly_summary_df, aes(x = hour_military, y = avg_mets)) +
-  geom_line(size = 1.2) +
-  geom_point() +
-  labs(title = "Average METs by Hour of Day", x = "Hour", y = "Average METs") +
-  theme_minimal()
-
-# 5. Average Intensity
+# 4. Average Intensity
 ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
   geom_line(size = 1.2) +
   geom_point() +
@@ -98,10 +90,10 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
   theme_minimal()
 ```
 
-**Correlation Matrix** To help pick out important features
-## Correlation Matrix of All Features of Interest
+**Correlation Matrix** To help pick out important features. Tells us redundancies, etc. Sleep has a weak negative correlation to everything. Everything else is redundant. We chose intensity to represent activity
+# Correlation Matrix of All Features of Interest
 ```{r}
-correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity","avg_mets")])
+correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity")])
 ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
@@ -114,68 +106,153 @@ intervals_df <- intervals_df %>%
   )
 ```
 
-**Break down opportunity Score**
-## Opportunity Score
+**Break down opportunity Score** Explain how you broke down the opportunity score. Explain the normalization process
+# Opportunity Score
 ```{r}
 weight_intensity <- 0.4
 weight_sleep <- 0.6
 
 intervals_df <- intervals_df %>%
   mutate(
-    #opportunity_score = weight_steps * (1 - norm_steps)^0.5 + weight_sleep * (1 - norm_sleep)^0.5  # lower steps and sleep = higher score
     opportunity_score = weight_intensity*(norm_intensity) + weight_sleep*(norm_sleep)
   )
 ```
 
-**Opportunity Score Results**
+**Opportunity Score Results** Go into detail on the opportunity score and its distribution. It does not look as top heavy now
 ```{r}
 head(intervals_df)
+summary(intervals_df$opportunity_score)
 ```
 
 ## EDA (Lincoln)
+ How did your question change, if at all, after Exploratory Data Analysis?   Based on EDA can you begin to sketch out an answer to your question?  Summary of the dataset  Descriptive statistics  Graphical representations of the data  [Proper usage when applicable] Measures of Variance / sd 
 
-## Boxplot
+# Boxplot Opportunity Score (Include descriptive statistics)
 ```{r}
 ```
 
-## Bar Graph
+# Boxplot Intensity (Include descriptive statistics)
 ```{r}
-intervals_summary <- intervals_df %>%
+```
+
+# Boxplot Sleep (Include descriptive statistics)
+```{r}
+```
+
+# Bar Graphs
+```{r}
+score_summary <- intervals_df %>%
   group_by(time_only) %>%
   summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE))
 
 # Mean opportunity score by time interval
-ggplot(intervals_summary, aes(x = time_only, y = mean_opportunity_score)) +
+ggplot(score_summary, aes(x = time_only, y = mean_opportunity_score)) +
   geom_col(fill = "darkorange") +
   labs(title = "Average Opportunity Score by 10 Minute Interval (Best Time for TV Ads)",
-       x = "10 Second Intervals (Military Time)",
+       x = "10 Minute Intervals (Military Time)",
        y = "Mean Opportunity Score") +
+  theme(axis.text.x = element_blank())
+
+intensity_summary <- intervals_df %>%
+  group_by(time_only) %>%
+  summarize(mean_norm_intensity = mean(norm_intensity, na.rm = TRUE))
+
+# Mean intensity by time interval
+ggplot(intensity_summary, aes(x = time_only, y = mean_norm_intensity)) +
+  geom_col(fill = "green") +
+  labs(title = "Average Intensity by 10 Minute Interval (Best Time for TV Ads)",
+       x = "10 Minute Intervals (Military Time)",
+       y = "Mean Intensity") +
+  theme(axis.text.x = element_blank())
+
+sleep_summary <- intervals_df %>%
+  group_by(time_only) %>%
+  summarize(mean_norm_sleep = mean(norm_sleep, na.rm = TRUE))
+
+# Mean sleep by time interval
+ggplot(sleep_summary, aes(x = time_only, y = mean_norm_sleep)) +
+  geom_col(fill = "blue") +
+  labs(title = "Average Sleep by 10 Minute Interval (Best Time for TV Ads)",
+       x = "10 Minute Intervals (Military Time)",
+       y = "Mean Sleep") +
   theme(axis.text.x = element_blank())
 ```
 
-## QQ Plot
+
+# QQ Plot Opportunity Score (Make sure to label)
 ```{r}
 qqnorm(intervals_df$opportunity_score)
 qqline(intervals_df$opportunity_score, col = "red")
+
+shapiro.test(intervals_df$opportunity_score)
 ```
 
-## Histogram
+# QQ Plot Intensity
+```{r}
+qqnorm(intervals_df$avg_intensity)
+qqline(intervals_df$avg_intensity, col = "red")
+shapiro.test(intervals_df$avg_intensity)
+```
+
+
+# QQ Plot Sleep
+```{r}
+qqnorm(intervals_df$avg_sleep)
+qqline(sleep_summary$mean_norm_sleep, col = "red")
+shapiro.test(intervals_df$avg_sleep)
+```
+
+# Histogram Distribution Plot Opportunity Score
 ```{r}
 ```
+
+# Histogram Intensity
+```{r}
+```
+
+# Histogram Sleep
+```{r}
+```
+
+
+##LINCOLN -> MAKE SURE TO INCLUDE Measures of Variance / sd  IF NECESSARY
 
 
 ## Statistical Analysis (Naiyani)
 
-## Kruskal Wallis
+# Kruskal Wallis Test-> Opportunity Score
+```{r}
+# Null Hypothesis: There is no difference in opportunity score between the different time intervals
+# Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
+
+kruskal.test(intervals_df$opportunity_score ~ intervals_df$time_only)
+```
+
+# Kruskal Wallis Test -> Intensity
+```{r}
+# Null Hypothesis: There is no difference in intensity between the different time intervals
+# Alternative Hypothesis: There is a difference in intensity between the different time intervals
+```
+
+# Kruskal Wallis Test -> Sleep
+```{r}
+# Null Hypothesis: There is no difference in sleep between the different time intervals
+# Alternative Hypothesis: There is a difference in sleep between the different time intervals
+```
+
+# Chi Square Test Opportunity Score
 ```{r}
 ```
 
-## Chi Square
-# Need to write new code for this
+# Chi Square Test Intensity
 ```{r}
 ```
 
-## Post Hoc
+# Chi Square Test Sleep
+```{r}
+```
+
+# Post Hoc Analysis (decide at the end whether or not this is necessary)
 ```{r}
 ```
 

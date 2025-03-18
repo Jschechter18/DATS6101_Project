@@ -24,69 +24,176 @@ library(lubridate)
 # Load the data
 ```{r}
 steps <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteStepsNarrow_merged.csv")
-heart_rate <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/heartrate_seconds_merged.csv")
 sleep <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteSleep_merged.csv")
 intensity <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteIntensitiesNarrow_merged.csv")
 calories <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteCaloriesNarrow_merged.csv")
-mets <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/mturkfitbit_export_month1/minuteMETsNarrow_merged.csv")
 ```
 
 # Ensure time is correctly formated
 ```{r}
 # , orders = c("mdy HMS", "mdy HM")
 steps$ActivityMinute <- parse_date_time(steps$ActivityMinute, orders = "mdy IMS p")
-heart_rate$ActivityMinute <- parse_date_time(heart_rate$Time, orders = "mdy IMS p")
 sleep$ActivityMinute <- parse_date_time(sleep$date, orders = "mdy IMS p")
 intensity$ActivityMinute <- parse_date_time(intensity$ActivityMinute, "mdy IMS p")
 calories$ActivityMinute <- parse_date_time(calories$ActivityMinute, "mdy IMS p")
-mets$ActivityMinute <- parse_date_time(mets$ActivityMinute, orders = "mdy IMS p")
-```
-
-```{r}
-sleep$value <- ifelse(sleep$value == 1, 1, 0)
-sleep
 ```
 
 ```{r}
 steps$HourMilitary <- format(steps$ActivityMinute, "%H:%M")
+sleep$HourMilitary <- format(sleep$ActivityMinute, "%H:%M")
+intensity$HourMilitary <- format(intensity$ActivityMinute, "%H:%M")
+calories$HourMilitary <- format(calories$ActivityMinute, "%H:%M")
 ```
 
-# Summarize data to 8-minute intervals
 ```{r}
-interval_steps <- steps %>%
+sleep <- sleep %>%
+  mutate(ActivityMinute = ActivityMinute - seconds(30))
+
+sleep$value <- ifelse(sleep$value == 1, 1, 0)
+```
+
+```{r}
+#sleep <- sleep %>%
+#  select(-Id)
+
+steps <- steps %>%
+  select(-Id)
+
+intensity <- intensity %>%
+  select(-Id)
+
+calories <- calories %>%
+  select(-Id)
+```
+
+```{r}
+sleep <- sleep %>%
+  mutate(ActivityMinute = ymd_hms(ActivityMinute))
+
+steps <- steps %>%
+  mutate(ActivityMinute = ymd_hms(ActivityMinute))
+
+intensity <- intensity %>%
+  mutate(ActivityMinute = ymd_hms(ActivityMinute))
+
+calories <- calories %>%
+  mutate(ActivityMinute = ymd_hms(ActivityMinute))
+```
+
+```{r}
+sleep_per_minute <- sleep %>%
+  group_by(ActivityMinute) %>%
+  summarise(avg_sleep = mean(value, na.rm = TRUE), .groups = "drop")
+
+steps_per_minute <- steps %>%
+  group_by(ActivityMinute) %>%
+  summarise(avg_steps = mean(Steps, na.rm = TRUE), .groups = "drop")
+
+intensity_per_minute <- intensity %>%
+  group_by(ActivityMinute) %>%
+  summarise(avg_intensity = mean(Intensity, na.rm = TRUE), .groups = "drop")
+
+calories_per_minute <- calories %>%
+  group_by(ActivityMinute) %>%
+  summarise(avg_calories = mean(Calories, na.rm = TRUE), .groups = "drop")
+```
+
+
+
+# Trying to fix
+```{r}
+#write.csv(steps, "C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/steps.csv", row.names = FALSE)
+sleep_per_minute <- sleep_per_minute %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
+
+steps_per_minute <- steps_per_minute %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
+
+intensity_per_minute <- intensity_per_minute %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
+
+calories_per_minute <- calories_per_minute %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
+```
+
+```{r}
+sleep_clean <- sleep %>%
+  group_by(Id, ActivityMinute) %>%
+  summarise(value = mean(value, na.rm = TRUE), .groups = "drop")
+
+sleep_clean <- sleep_clean %>%
+  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
+
+# Sum how many minutes each person was asleep in each interval
+sleep_per_participant <- sleep_clean %>%
+  group_by(Id, interval_start) %>%
+  summarise(minutes_asleep = sum(value, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+# Average across participants
+sleep_10min <- sleep_per_participant %>%
+  group_by(interval_start) %>%
+  summarise(avg_sleep = mean(minutes_asleep, na.rm = TRUE), .groups = "drop")
+
+steps_10min <- steps_per_minute %>%
+  group_by(interval_start) %>%
+  summarise(avg_steps = sum(avg_steps, na.rm = TRUE)/3, .groups = "drop")
+
+intensity_10min <- intensity_per_minute %>%
+  group_by(interval_start) %>%
+  summarise(avg_intensity = sum(avg_intensity, na.rm = TRUE)/3, .groups = "drop")
+
+calories_10min <- calories_per_minute %>%
+  group_by(interval_start) %>%
+  summarise(avg_calories = sum(avg_calories, na.rm = TRUE)/3, .groups = "drop")
+```
+
+```{r}
+#steps_10min <- sleep %>%
+#  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
+#  group_by(Id, interval_start) %>%
+#  summarise(participant_sleep = sum(value, na.rm = TRUE), .groups = "drop") %>%
+#  group_by(interval_start) %>%
+#  summarise(avg_sleep = mean(participant_sleep), .groups = "drop")
+
+#sleep_10min <- sleep %>%
+ # mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
+#  group_by(interval_start) %>%
+#  summarise(average_sleep_per_minute = mean(value, na.rm = TRUE), .groups = "drop")
+
+
+```
+
+# Summarize data to 10-minute intervals (incorrect)
+```{r}
+steps_10min <- steps %>%
   mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_steps = mean(Steps, na.rm = TRUE), .groups = "drop") 
 
-interval_sleep <- sleep %>%
+sleep_10min <- sleep %>%
   mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_sleep = mean(value, na.rm = TRUE), .groups = "drop")
 
-interval_intensity <- intensity %>%
+intensity_10min <- intensity %>%
   mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_intensity = mean(Intensity, na.rm = TRUE), .groups = "drop")
 
-interval_calories <- calories %>%
+calories_10min <- calories %>%
   mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
   group_by(interval_start) %>%
   summarise(avg_calories = mean(Calories, na.rm = TRUE), .groups = "drop")
-
-interval_mets <- mets %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
-  group_by(interval_start) %>%
-  summarise(avg_mets = mean(METs, na.rm = TRUE), .groups = "drop")
 ```
-
 
 # Merge datasets
 ```{r}
-interval_data <- interval_steps %>%
-  left_join(interval_sleep, by = c("interval_start")) %>%
-  left_join(interval_intensity, by = c("interval_start")) %>%
-  left_join(interval_calories, by = c("interval_start")) %>%
-  left_join(interval_mets, by = c("interval_start"))
+interval_data <- sleep_10min %>%
+  left_join(steps_10min, by = c("interval_start")) %>%
+  left_join(intensity_10min, by = c("interval_start")) %>%
+  left_join(calories_10min, by = c("interval_start"))
 ```
 
 # Add day of week
@@ -106,5 +213,3 @@ interval_data <- interval_data %>%
 ```{r}
 write.csv(interval_data, "C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv", row.names = FALSE)
 ```
-
-
