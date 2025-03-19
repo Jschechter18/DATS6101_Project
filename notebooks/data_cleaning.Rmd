@@ -46,6 +46,13 @@ calories$HourMilitary <- format(calories$ActivityMinute, "%H:%M")
 ```
 
 ```{r}
+steps <- na.omit(steps)
+sleep <- na.omit(sleep)
+intensity <- na.omit(intensity)
+calories <- na.omit(calories)
+```
+
+```{r}
 sleep <- sleep %>%
   mutate(ActivityMinute = ActivityMinute - seconds(30))
 
