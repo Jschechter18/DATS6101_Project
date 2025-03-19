@@ -482,7 +482,7 @@ intervals_df$time_only &lt;- ifelse(nchar(intervals_df$interval_start) &gt;= 19,
 <p>Marketing is an effective tool for expanding knowledge about a given
 product or service. However, these advertisements must be aired at a
 time when people are available to view them to reach the largest
-possible audience. Our research sets out to determine the bets times of
+possible audience. Our research sets out to determine the best times of
 day to air advertisements based on the availability of individuals. Our
 proposal is that potential customers are most available to be
 susceptible to consuming advertisements when they are awake but also
@@ -493,9 +493,9 @@ determine what time of day individuals are most susceptible to consuming
 marketing advertisements. We will do this by determining features of
 interest from the dataset, creating a scoring metric for each time
 interval, and determining if those time slots yield significant
-differences from one another. Based on the scoring function we derived;
-we determined that certain times of day are better for airing
-advertisements than others.</p>
+differences from one another. Based on the scoring function we derived
+and the statistical tests we ran on it; we determined that certain times
+of day are better for airing advertisements than others.</p>
 </div>
 <div id="data-preprocessing" class="section level2">
 <h2>Data Preprocessing</h2>
@@ -512,23 +512,24 @@ relationship with calories) and average heart rate.</p>
 <p>We then aimed to condense our dataset into fewer datapoints, as time
 steps of 1-minute intervals were unnecessarily large. What we decided
 was to reduce the datapoints by changing the time intervals from
-1-minute to 10-minutes, with values of the mean for 1-minute interval
-averages. This condensed the data into more useful time slots for
-potential advertisers to analyze.</p>
+1-minute to 10-minutes, with feature values representing the mean for
+1-minute interval averages. This condensed the data into more useful
+time slots for potential advertisers to analyze.</p>
 <p>To complete our data frame we wanted to add some more columns that we
 thought could help to place data into bins for simplistic visualization
 at a later time. These columns were time of day, and military hour of
 the day. At this point, we are left with 4530 observations, each
 representing a 10-minute interval.</p>
 <p>Finally, we cleaned our data of missing points. There were missing
-data points for individuals at certain timesteps, where we assumed that
-the individual was not wearing their Fitbit at that time. We elected to
-remove these observations. Interesting, every individual was missing
-datapoints between the hours of 2:00 AM to 3:00 AM on March 13th, 2016.
-This was due to a time shift for daylight savings, meaning the times
-technically did not exist, so we decided to remove all those missing
-datapoints. Ultimately any datapoint with missing data was removed from
-the dataset. Displayed below is a summary of the final data frame.</p>
+data points for individuals-often in chunks-at arbitrary timesteps,
+where we assumed that the individual was not wearing their Fitbit at
+that time. We elected to remove such observations. Interestingly, every
+individual was missing datapoints between the hours of 2:00 AM to 3:00
+AM on March 13th, 2016. This was due to a time shift for daylight
+savings, meaning the times technically did not exist, so we removed
+those missing datapoints. Ultimately any datapoint with missing data was
+removed from the dataset. Displayed below is a summary of the final data
+frame.</p>
 <pre class="r"><code>head(intervals_df)</code></pre>
 <pre><code>##        interval_start avg_sleep avg_steps avg_intensity avg_calories
 ## 1          2016-03-12 0.9893617 0.4983165    0.04040404     1.189108
@@ -654,15 +655,15 @@ Average steps, calories, and intensity were all very strongly correlated
 to one another. Notably, sleep had a very weak correlation to any of the
 other features. To reduce the dimensionality, we decided to exclude
 steps and calories from our scoring function, as we felt that one of
-these three features would be sufficient at representing activity
-levels. At this point, we have identified our features of interest as
-average sleep and intensity.</p>
+these three features would be sufficient at representing activity level.
+At this point, we have identified our features of interest as average
+sleep and intensity.</p>
 <pre class="r"><code>intervals_df &lt;- intervals_df %&gt;%
   mutate(
     norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
     norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
   )</code></pre>
-<p><strong>Break down opportunity Score</strong> # Opportunity Score</p>
+<p><strong>Break down opportunity Score</strong></p>
 <pre class="r"><code>weight_intensity &lt;- 0.4
 weight_sleep &lt;- 0.6
 
@@ -681,8 +682,8 @@ variables, norm_intensity, and norm_sleep represent the normalized
 datapoints for our intensity and sleep features.</p>
 <p>Next, we created our scoring function, called opportunity score. The
 opportunity score formula is as follows:</p>
-<p>opportunity_score = 0.4<em>(1 - |norm_intensity – 0.5| </em> 2) +
-0.6*(1 - norm_sleep)</p>
+<p>opportunity_score = 0.4*(1 - |norm_intensity – 0.5| * 2) + 0.6*(1 -
+norm_sleep)</p>
 <p>Inside the first set of parentheses, is a formula to reward values
 closer to the middle of the distribution. Originally, we created a
 formula that rewards low activity, however that would heavily favor
@@ -697,9 +698,9 @@ one. This allows the score to best reward low sleep values.</p>
 <p>Each set of parameters are multiplied by a weight value. The weights
 were determined by how important we felt each feature was to the score
 based on our use-case. We decided to weigh sleep more heavily than
-intensity, as a individual who is sleeping has no potential to consume a
-marketing advertisement, whereas a waken but active individual who is
-active could still be exposed to marketing.</p>
+intensity, as an individual who is sleeping has no potential to consume
+a marketing advertisement, whereas a woke but active individual could
+still be exposed to marketing.</p>
 <p><strong>Opportunity Score Results</strong></p>
 <pre class="r"><code>summary(intervals_df$opportunity_score)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 

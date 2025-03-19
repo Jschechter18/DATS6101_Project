@@ -31,17 +31,18 @@ intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
 
 ## Introduction
 
-Marketing is an effective tool for expanding knowledge about a given product or service. However, these advertisements must be aired at a time when people are available to view them to reach the largest possible audience. Our research sets out to determine the bets times of day to air advertisements based on the availability of individuals. Our proposal is that potential customers are most available to be susceptible to consuming advertisements when they are awake but also resting. We collected data from Fitbit watch users which track features of 35 individuals throughout the course of a month, each with a day and time index. Our goal is to use these features at each time step to determine what time of day individuals are most susceptible to consuming marketing advertisements. We will do this by determining features of interest from the dataset, creating a scoring metric for each time interval, and determining if those time slots yield significant differences from one another. Based on the scoring function we derived; we determined that certain times of day are better for airing advertisements than others.
+Marketing is an effective tool for expanding knowledge about a given product or service. However, these advertisements must be aired at a time when people are available to view them to reach the largest possible audience. Our research sets out to determine the best times of day to air advertisements based on the availability of individuals. Our proposal is that potential customers are most available to be susceptible to consuming advertisements when they are awake but also resting. We collected data from Fitbit watch users which track features of 35 individuals throughout the course of a month, each with a day and time index. Our goal is to use these features at each time step to determine what time of day individuals are most susceptible to consuming marketing advertisements. We will do this by determining features of interest from the dataset, creating a scoring metric for each time interval, and determining if those time slots yield significant differences from one another. Based on the scoring function we derived and the statistical tests we ran on it; we determined that certain times of day are better for airing advertisements than others.
 
 ## Data Preprocessing
 
 Our original dataset collected numerous features over a 1-month period, however not all features were found to be useful for our use-case. In fact, many features were not able to effectively join on our time intervals, so we decided to simply exclude them altogether. Other features were logged by minute and were easily merged on the derived time intervals. These features were as follows: average sleep, average steps taken, average intensity—scaled 1-3, with 3 being the highest—and average calories. Features that could have merged, but we decided to exclude due to redundancy were average METs (direct relationship with calories) and average heart rate.
 
-We then aimed to condense our dataset into fewer datapoints, as time steps of 1-minute intervals were unnecessarily large. What we decided was to reduce the datapoints by changing the time intervals from 1-minute to 10-minutes, with values of the mean for 1-minute interval averages. This condensed the data into more useful time slots for potential advertisers to analyze.
+We then aimed to condense our dataset into fewer datapoints, as time steps of 1-minute intervals were unnecessarily large. What we decided was to reduce the datapoints by changing the time intervals from 1-minute to 10-minutes, with feature values representing the mean for 1-minute interval averages. This condensed the data into more useful time slots for potential advertisers to analyze.
 
 To complete our data frame we wanted to add some more columns that we thought could help to place data into bins for simplistic visualization at a later time. These columns were time of day, and military hour of the day. At this point, we are left with 4530 observations, each representing a 10-minute interval.
 
-Finally, we cleaned our data of missing points. There were missing data points for individuals at certain timesteps, where we assumed that the individual was not wearing their Fitbit at that time. We elected to remove these observations. Interesting, every individual was missing datapoints between the hours of 2:00 AM to 3:00 AM on March 13th, 2016. This was due to a time shift for daylight savings, meaning the times technically did not exist, so we decided to remove all those missing datapoints. Ultimately any datapoint with missing data was removed from the dataset. Displayed below is a summary of the final data frame.
+Finally, we cleaned our data of missing points. There were missing data points for individuals-often in chunks-at arbitrary timesteps, where we assumed that the individual was not wearing their Fitbit at that time. We elected to remove such observations. Interestingly, every individual was missing datapoints between the hours of 2:00 AM to 3:00 AM on March 13th, 2016. This was due to a time shift for daylight savings, meaning the times technically did not exist, so we removed those missing datapoints. Ultimately any datapoint with missing data was removed from the dataset.
+Displayed below is a summary of the final data frame.
 
 ```{r}
 head(intervals_df)
@@ -111,7 +112,7 @@ ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 
 After visualizing how individual features behave throughout the day, we determined that there could be some strong correlations between average steps, calories, and intensity. If this was the case, it would make sense to remove some of the redundant features, allowing us to reduce the dimensionality of our scoring function. 
 
-After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had a very weak correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function, as we felt that one of these three features would be sufficient at representing activity levels. At this point, we have identified our features of interest as average sleep and intensity.
+After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had a very weak correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function, as we felt that one of these three features would be sufficient at representing activity level. At this point, we have identified our features of interest as average sleep and intensity.
 
 
 ```{r}
@@ -123,7 +124,6 @@ intervals_df <- intervals_df %>%
 ```
 
 **Break down opportunity Score**
-# Opportunity Score
 ```{r}
 weight_intensity <- 0.4
 weight_sleep <- 0.6
@@ -141,13 +141,13 @@ Before creating our function, it was necessary to normalize—or scale—the fea
 
 Next, we created our scoring function, called opportunity score. The opportunity score formula is as follows:
 
-opportunity_score = 0.4*(1 - |norm_intensity – 0.5| * 2) + 0.6*(1 - norm_sleep)
+opportunity_score = 0.4\*(1 - |norm_intensity – 0.5| \* 2) + 0.6\*(1 - norm_sleep)
 
 Inside the first set of parentheses, is a formula to reward values closer to the middle of the distribution. Originally, we created a formula that rewards low activity, however that would heavily favor nighttime hours, when individuals are likely to be sleeping. To combat this, we used this formula to ensure that moderate intensity is favored. If there is moderate intensity, we can be more confident that an individual is not sleeping during that time interval but rather is resting.
 
 Inside the second set of parentheses, is the normalized value of sleep per datapoint, subtracted from the normalized maximum value of one. This allows the score to best reward low sleep values.
 
-Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score based on our use-case. We decided to weigh sleep more heavily than intensity, as a individual who is sleeping has no potential to consume a marketing advertisement, whereas a waken but active individual who is active could still be exposed to marketing.
+Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score based on our use-case. We decided to weigh sleep more heavily than intensity, as an individual who is sleeping has no potential to consume a marketing advertisement, whereas a woke but active individual could still be exposed to marketing.
 
 
 **Opportunity Score Results**
