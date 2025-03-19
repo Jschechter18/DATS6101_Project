@@ -1,16 +1,18 @@
 ---
-title: "writeup.rmd"
-author: "Josh Schechter"
+title: "Identifying Optimal Time Slots for Marketing Use"
+author: "Josh Schechter, Naiyani Paladugu, Lincoln, Orellana"
 date: "2025-03-18"
-output: html_document
-code_folding: hide
+output:
+  html_document:
+    code_folding: hide
+
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/ This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
+#Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/ This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
 
 ```{r}
 library(tidyverse)
@@ -19,7 +21,6 @@ library(lubridate)
 library(ggcorrplot)
 ```
 
-# Load Intervals
 ```{r}
 intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
 intervals_df <- na.omit(intervals_df)
@@ -28,18 +29,23 @@ intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
                        "00:00:00")
 ```
 
-**Introduction** SMART Questions, about the dataset, etc.
+## Introduction
 
-**Data Preprocessing** Data cleaning, etc.
+Marketing is an effective tool for expanding knowledge about a given product or service. However, it can be expensive to air advertisements. Our research sets out to determine when the bets times of day to air advertisements are to get the most out of the cost of the advertisement. Our hypothesis is that potential customers are most available to be susceptible to consuming advertisements when they are awake, but also with low activity. We collected data from Fitbit watch users which track various time-based features that could help to determine how active a user is at any given moment of the day. Our goal is to use these features to determine what time intervals of the day people are most susceptible to consuming marketing advertisements. We will do this by determining features of interest from the dataset, creating a scoring metric to measure how optimal said timeslot is for marketing of a given timeslot, and to determine if those time slots yield significant differences across the course of a 24-hour period. In theory, a higher score should yield higher marketing consumption.
 
-**Resulting Dataframe** Explain the dataframe columns, and what they represent
+## Data Preprocessing
+
+Our original dataset collected numerous features over a 1 month period; not all features were found to be useful for our use-case. In fact, many features were not able to effectively map into our time intervals, so we decided to simply not include them in our dataset. Other features were logged by minute and were easily merged on the given time intervals. These features were as follows: average sleep, average steps taken, average intensity (scaled 1-3, with 3 being the highest), and average calories. Features that could have merged well, but we decided to exclude due to redundancy were average METs (direct relationship with calories) and average heart rate.
+
+Next, we aimed to condense our dataset into less datapoints, as time steps for 1-minute intervals seemed extreme. What we decided was to reduce the datapoints by changing the time intervals to 10-minute averages, rather than 1 minute. This condensed the data into more useful time slots for advertisers to analyze.
+
+To complete our data frame we wanted to add some more columns that we thought could help to place data into bins for easier visualization later. These columns were time of day, and military hour of the day. At this point, we are left with 4500 observations, indexed by time step.
+
+Finally, we needed to clean our data of any missing points. Our first objective was to identify the missing time points and determine if there were any trends there. There were missing data points scattered around, where we assumed that the Fitbit user did not wear their watch at those times. We decided to remove these datapoints, as there is no way to estimate what the users were doing at those times. Interesting, the most consistent missing data points were for every user, which was between the hours of 2:00 AM to 3:00 AM on March 13th, 2016. After conducting some research, we realized that hour was skipped due to daylight savings, so we decided to remove all those missing datapoints from the dataset. In the end, all datapoints with missing data were removed from the dataset. Displayed below is a summary of the final data frame.
 ```{r}
 head(intervals_df)
 summary(intervals_df)
 ```
-
-## Setup (Josh)
- What do we know about this dataset?  What are the limitations of the dataset?  How was the information gathered?  What analysis has already been completed related to the content in your dataset?  How did the research you gathered contribute to your question development?  What additional information would be beneficial?
 ```{r}
 # Aggregate by hour
 hourly_summary_df <- intervals_df %>%
@@ -52,14 +58,14 @@ hourly_summary_df <- intervals_df %>%
   )
 ```
 
-**Hourly Summary** Explain that you broke this down into bins by hour for visual trend purposes
+**Hourly Summary**
 ```{r}
 summary(hourly_summary_df)
 ```
 
+## Exploratory Data Analysis (EDA)
 
-**Initial time series plots** Show the time series plots for individual quantitative features. Shows us individual trends
-# Time series graph of individual features (need to write new code for this)
+**Initial time series plots**
 ```{r}
 # 1. Average Sleep
 ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
@@ -90,14 +96,22 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
   theme_minimal()
 ```
 
-**Correlation Matrix** To help pick out important features. Tells us redundancies, etc. Sleep has a weak negative correlation to everything. Everything else is redundant. We chose intensity to represent activity
-# Correlation Matrix of All Features of Interest
+Before constructing our scoring function, we sought to look at the features available and see how those change over time. We put together time-series plots, starting from midnight, and going through 11pm. From this, four independent plots were derived.
+The first plot being, the average sleep per minute, for each hour of the day. As expected, we see a trend where daylight hours average the least amount of sleep, while nighttime hours average the most.
+
+The second plot being the average number of steps taken per minute, for each hour of the day. Once again, we see an expected trend, where daylight hours end up being the most steps, with a significant decline during nighttime hours.  This trend continues for the next two plots as well. The first of which being average calories burned per minute, for each hour of the day. The second being the average intensity per minute, for each hour of the day. Both plots were consistent with the trend of higher values during daylight hours of the day, with lowest at night. By looking at our visualizations, we inferred that some of our features are still very strongly correlated and therefore wanted to confirm this with further evaluation.
+
+
+
+**Correlation Matrix**
 ```{r}
 correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity")])
 ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
-# Normalize Features of Interest
+After looking at individual trends of our features, we determined that there could be some strong correlations between average steps, calories, and intensity. If this was the case, it would make sense to remove some of the redundant features, allowing us to reduce the dimensionality of our scoring function. 
+After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had very little correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function. At this point, we have identified our features of interest, average sleep and intensity.
+
 ```{r}
 intervals_df <- intervals_df %>%
   mutate(
@@ -106,7 +120,7 @@ intervals_df <- intervals_df %>%
   )
 ```
 
-**Break down opportunity Score** Explain how you broke down the opportunity score. Explain the normalization process
+**Break down opportunity Score**
 # Opportunity Score
 ```{r}
 weight_intensity <- 0.4
@@ -114,32 +128,50 @@ weight_sleep <- 0.6
 
 intervals_df <- intervals_df %>%
   mutate(
-    opportunity_score = weight_intensity*(norm_intensity) + weight_sleep*(norm_sleep)
+    #opportunity_score = weight_intensity*(1 - norm_intensity) + weight_sleep*(1 - norm_sleep)
+    opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
   )
 ```
 
-**Opportunity Score Results** Go into detail on the opportunity score and its distribution. It does not look as top heavy now
-```{r}
-head(intervals_df)
-summary(intervals_df$opportunity_score)
-```
+By identifying any lingering redundancies in our dataset, we were now able to create our scoring function with the remaining features of interest, sleep and intensity.
 
-## EDA (Lincoln)
+Before creating our function, it was necessary to normalize the features to support our scoring function. We found normalizing the data yielded better scores. We now have two new variables, norm_intensity, and norm_sleep. These two variables represent the normalized datapoints for our previous intensity and sleep columns.
+
+Next, we created our scoring function, called opportunity score. The opportunity score formula is as follows:
+opportunity_score = 0.4*(1 - |norm_intensity – 0.5| * 2) + 0.6*(1 - norm_sleep)
+
+Inside the first set of parentheses, is a formula to reward values closer to the middle of the distribution. This indicates that there is moderate intensity occurring at that point. If there is moderate intensity, we can be more confident that a user is not sleeping during that time interval, but also not too active.
+
+Inside the second set of parentheses, is the normalized value of sleep per datapoint, subtracted from one. This allows the score to best reward low sleep values.
+
+Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score. We decided to weigh sleep heavier than intensity, as a person who is sleeping has no potential to consume a marketing advertisement. Whereas a person who is active could still potentially be susceptible.
+
+
+**Opportunity Score Results**
+```{r}
+summary(intervals_df$opportunity_score)
+mean(intervals_df$opportunity_score)
+sd(intervals_df$opportunity_score)
+var(intervals_df$opportunity_score)
+```
+Displayed above are the summary statistics of our opportunity score. Of the column opportunity score, the mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. Early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew.
+
+#More EDA (Lincoln)
  How did your question change, if at all, after Exploratory Data Analysis?   Based on EDA can you begin to sketch out an answer to your question?  Summary of the dataset  Descriptive statistics  Graphical representations of the data  [Proper usage when applicable] Measures of Variance / sd 
 
-# Boxplot Opportunity Score (Include descriptive statistics)
+## Boxplot Opportunity Score (Include descriptive statistics)
 ```{r}
 ```
 
-# Boxplot Intensity (Include descriptive statistics)
+## Boxplot Intensity (Include descriptive statistics)
 ```{r}
 ```
 
-# Boxplot Sleep (Include descriptive statistics)
+## Boxplot Sleep (Include descriptive statistics)
 ```{r}
 ```
 
-# Bar Graphs
+## Bar Graphs
 ```{r}
 score_summary <- intervals_df %>%
   group_by(time_only) %>%
@@ -148,7 +180,7 @@ score_summary <- intervals_df %>%
 # Mean opportunity score by time interval
 ggplot(score_summary, aes(x = time_only, y = mean_opportunity_score)) +
   geom_col(fill = "darkorange") +
-  labs(title = "Average Opportunity Score by 10 Minute Interval (Best Time for TV Ads)",
+  labs(title = "Average Opportunity Score by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
        y = "Mean Opportunity Score") +
   theme(axis.text.x = element_blank())
@@ -160,7 +192,7 @@ intensity_summary <- intervals_df %>%
 # Mean intensity by time interval
 ggplot(intensity_summary, aes(x = time_only, y = mean_norm_intensity)) +
   geom_col(fill = "green") +
-  labs(title = "Average Intensity by 10 Minute Interval (Best Time for TV Ads)",
+  labs(title = "Average Intensity by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
        y = "Mean Intensity") +
   theme(axis.text.x = element_blank())
@@ -172,45 +204,45 @@ sleep_summary <- intervals_df %>%
 # Mean sleep by time interval
 ggplot(sleep_summary, aes(x = time_only, y = mean_norm_sleep)) +
   geom_col(fill = "blue") +
-  labs(title = "Average Sleep by 10 Minute Interval (Best Time for TV Ads)",
+  labs(title = "Average Sleep by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
        y = "Mean Sleep") +
   theme(axis.text.x = element_blank())
 ```
 
 
-# QQ Plot Opportunity Score (Make sure to label)
+## QQ Plot Opportunity Score (Make sure to label)
 ```{r}
 qqnorm(intervals_df$opportunity_score)
 qqline(intervals_df$opportunity_score, col = "red")
 
-shapiro.test(intervals_df$opportunity_score)
+#shapiro.test(intervals_df$opportunity_score)
 ```
 
-# QQ Plot Intensity
+## QQ Plot Intensity
 ```{r}
 qqnorm(intervals_df$avg_intensity)
 qqline(intervals_df$avg_intensity, col = "red")
-shapiro.test(intervals_df$avg_intensity)
+#shapiro.test(intervals_df$avg_intensity)
 ```
 
 
-# QQ Plot Sleep
+## QQ Plot Sleep
 ```{r}
 qqnorm(intervals_df$avg_sleep)
 qqline(sleep_summary$mean_norm_sleep, col = "red")
-shapiro.test(intervals_df$avg_sleep)
+#shapiro.test(intervals_df$avg_sleep)
 ```
 
-# Histogram Distribution Plot Opportunity Score
+## Histogram Distribution Plot Opportunity Score
 ```{r}
 ```
 
-# Histogram Intensity
+## Histogram Intensity
 ```{r}
 ```
 
-# Histogram Sleep
+## Histogram Sleep
 ```{r}
 ```
 

@@ -53,8 +53,8 @@ sleep$value <- ifelse(sleep$value == 1, 1, 0)
 ```
 
 ```{r}
-#sleep <- sleep %>%
-#  select(-Id)
+sleep <- sleep %>%
+  select(-Id)
 
 steps <- steps %>%
   select(-Id)
@@ -98,73 +98,6 @@ calories_per_minute <- calories %>%
   summarise(avg_calories = mean(Calories, na.rm = TRUE), .groups = "drop")
 ```
 
-
-
-# Trying to fix
-```{r}
-#write.csv(steps, "C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/steps.csv", row.names = FALSE)
-sleep_per_minute <- sleep_per_minute %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
-
-steps_per_minute <- steps_per_minute %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
-
-intensity_per_minute <- intensity_per_minute %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
-
-calories_per_minute <- calories_per_minute %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
-```
-
-```{r}
-sleep_clean <- sleep %>%
-  group_by(Id, ActivityMinute) %>%
-  summarise(value = mean(value, na.rm = TRUE), .groups = "drop")
-
-sleep_clean <- sleep_clean %>%
-  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes"))
-
-# Sum how many minutes each person was asleep in each interval
-sleep_per_participant <- sleep_clean %>%
-  group_by(Id, interval_start) %>%
-  summarise(minutes_asleep = sum(value, na.rm = TRUE), .groups = "drop")
-```
-
-```{r}
-# Average across participants
-sleep_10min <- sleep_per_participant %>%
-  group_by(interval_start) %>%
-  summarise(avg_sleep = mean(minutes_asleep, na.rm = TRUE), .groups = "drop")
-
-steps_10min <- steps_per_minute %>%
-  group_by(interval_start) %>%
-  summarise(avg_steps = sum(avg_steps, na.rm = TRUE)/3, .groups = "drop")
-
-intensity_10min <- intensity_per_minute %>%
-  group_by(interval_start) %>%
-  summarise(avg_intensity = sum(avg_intensity, na.rm = TRUE)/3, .groups = "drop")
-
-calories_10min <- calories_per_minute %>%
-  group_by(interval_start) %>%
-  summarise(avg_calories = sum(avg_calories, na.rm = TRUE)/3, .groups = "drop")
-```
-
-```{r}
-#steps_10min <- sleep %>%
-#  mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
-#  group_by(Id, interval_start) %>%
-#  summarise(participant_sleep = sum(value, na.rm = TRUE), .groups = "drop") %>%
-#  group_by(interval_start) %>%
-#  summarise(avg_sleep = mean(participant_sleep), .groups = "drop")
-
-#sleep_10min <- sleep %>%
- # mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
-#  group_by(interval_start) %>%
-#  summarise(average_sleep_per_minute = mean(value, na.rm = TRUE), .groups = "drop")
-
-
-```
-
 # Summarize data to 10-minute intervals (incorrect)
 ```{r}
 steps_10min <- steps %>%
@@ -206,6 +139,10 @@ interval_data <- interval_data %>%
 
 interval_data <- interval_data %>%
   mutate(hour_military = format(interval_start, "%H"))
+```
+
+```{r}
+interval_data <- na.omit(interval_data)
 ```
 
 
