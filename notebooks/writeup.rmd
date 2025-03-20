@@ -1,0 +1,376 @@
+---
+title: "Identifying Optimal Time Slots for Marketing Use"
+author: "Josh Schechter, Naiyani Paladugu, Lincoln, Orellana"
+date: "2025-03-18"
+output:
+  html_document:
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Work on this branch. Do not push your code. We will copy and paste and put the code into one persons local and they will push and merge to develop/ This is our writeup. Everybody should write at least 1000 words for their section, and also include their plots and the code for that section.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(ggcorrplot)
+```
+
+```{r}
+intervals_df <- read.csv("C:/Users/JDS221/GWU/DATS6101/projects/DATS6101_Project/data/fitbit/timestep_data/intervals.csv")
+intervals_df <- na.omit(intervals_df)
+intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
+                       substr(intervals_df$interval_start, 12, 19),
+                       "00:00:00")
+```
+
+## Introduction
+
+Marketing is an effective tool for expanding knowledge about a given product or service. However, these advertisements must be aired at a time when people are available to view them to reach the largest possible audience. Our research sets out to determine the best times of day to air advertisements based on the availability of individuals. Our proposal is that potential customers are most available to be susceptible to consuming advertisements when they are awake but also resting. We collected data from Fitbit watch users which track features of 35 individuals throughout the course of a month, each with a day and time index. Our goal is to use these features at each time step to determine what time of day individuals are most susceptible to consuming marketing advertisements. We will do this by determining features of interest from the dataset, creating a scoring metric for each time interval, and determining if those time slots yield significant differences from one another. Based on the scoring function we derived and the statistical tests we ran on it; we determined that certain times of day are better for airing advertisements than others.
+
+## Data Preprocessing
+
+Our original dataset collected numerous features over a 1-month period, however not all features were found to be useful for our use-case. In fact, many features were not able to effectively join on our time intervals, so we decided to simply exclude them altogether. Other features were logged by minute and were easily merged on the derived time intervals. These features were as follows: average sleep, average steps taken, average intensity—scaled 1-3, with 3 being the highest—and average calories. Features that could have merged, but we decided to exclude due to redundancy were average METs (direct relationship with calories) and average heart rate.
+
+We then aimed to condense our dataset into fewer datapoints, as time steps of 1-minute intervals were unnecessarily large. What we decided was to reduce the datapoints by changing the time intervals from 1-minute to 10-minutes, with feature values representing the mean for 1-minute interval averages. This condensed the data into more useful time slots for potential advertisers to analyze.
+
+To complete our data frame we wanted to add some more columns that we thought could help to place data into bins for simplistic visualization at a later time. These columns were time of day, and military hour of the day. At this point, we are left with 4530 observations, each representing a 10-minute interval.
+
+Finally, we cleaned our data of missing points. There were missing data points for individuals-often in chunks-at arbitrary timesteps, where we assumed that the individual was not wearing their Fitbit at that time. We elected to remove such observations. Interestingly, every individual was missing datapoints between the hours of 2:00 AM to 3:00 AM on March 13th, 2016. This was due to a time shift for daylight savings, meaning the times technically did not exist, so we removed those missing datapoints. Ultimately any datapoint with missing data was removed from the dataset.
+Displayed below is a summary of the final data frame.
+
+```{r}
+head(intervals_df)
+summary(intervals_df)
+```
+```{r}
+# Aggregate by hour
+hourly_summary_df <- intervals_df %>%
+  group_by(hour_military) %>%
+  summarise(
+    avg_steps = mean(avg_steps, na.rm = TRUE),
+    avg_sleep = mean(avg_sleep, na.rm = TRUE),
+    avg_intensity = mean(avg_intensity, na.rm = TRUE),
+    avg_calories = mean(avg_calories, na.rm = TRUE),
+  )
+
+minutes_summary_df <- intervals_df
+```
+
+**Hourly Summary**
+```{r}
+summary(hourly_summary_df)
+summary(minutes_summary_df)
+```
+
+## Exploratory Data Analysis (EDA)
+
+**Initial time series plots**
+```{r}
+# 1. Average Sleep
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Sleep by Hour of Day", x = "Hour", y = "Average Sleep") +
+  theme_minimal()
+
+# 2. Average Steps
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_steps)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Steps by Hour of Day", x = "Hour", y = "Average Steps") +
+  theme_minimal()
+
+# 3. Average Cals
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_calories)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Calories by Hour of Day", x = "Hour", y = "Average Calories") +
+  theme_minimal()
+
+# 4. Average Intensity
+ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
+  geom_line(size = 1.2) +
+  geom_point() +
+  labs(title = "Average Intensity by Hour of Day", x = "Hour", y = "Average Intensity") +
+  theme_minimal()
+```
+
+Before constructing our scoring function, we sought to look at the features available and see how those change over time. We put together time-series plots with 24 bins, one for each hour of the day, each point representing the average activity per minute from that hour of the day. From this, four plots were derived.
+
+The first plot being, the average sleep per minute, for each hour of the day. As expected, we see a lower amount of sleep per minute during daylight hours, whereas that number goes up for nighttime.
+
+The second plot is the average number of steps taken per minute, for each hour of the day. Once again, we see an expected result, where daylight hours end up being the most steps per minute, with a significant decline during nighttime hours.  This trend continues for the next two plots as well. The first of which being average calories burned per minute, for each hour of the day. The second being the average intensity per minute, for each hour of the day. Both plots were consistent with the expectation of seeing higher values during daylight hours, and lower values at night. By looking at our visualizations, we inferred that some of our features are very strongly correlated, and decided to investigate this observation.
+
+**Correlation Matrix**
+```{r}
+correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity")])
+ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
+```
+
+After visualizing how individual features behave throughout the day, we determined that there could be some strong correlations between average steps, calories, and intensity. If this was the case, it would make sense to remove some of the redundant features, allowing us to reduce the dimensionality of our scoring function. 
+
+After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had a very weak correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function, as we felt that one of these three features would be sufficient at representing activity level. At this point, we have identified our features of interest as average sleep and intensity.
+
+
+```{r}
+minutes_summary_df <- minutes_summary_df %>%
+  mutate(
+    norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
+    norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
+  mutate(
+    norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
+    norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
+  )
+```
+
+**Break down opportunity Score**
+```{r}
+weight_intensity <- 0.4
+weight_sleep <- 0.6
+
+minutes_summary_df <- minutes_summary_df %>%
+  mutate(
+    opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
+  mutate(
+    opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
+  )
+```
+
+By identifying any lingering redundancies in our dataset, we were now able to create our scoring function with the features sleep and intensity.
+
+Before creating our function, it was necessary to normalize—or scale—the features to support our scoring function. We found normalizing the data yielded better scores. After normalization our two new variables, norm_intensity, and norm_sleep represent the normalized datapoints for our intensity and sleep features.
+
+Next, we created our scoring function, called opportunity score. The opportunity score formula is as follows:
+
+opportunity_score = 0.4\*(1 - |norm_intensity – 0.5| \* 2) + 0.6\*(1 - norm_sleep)
+
+Inside the first set of parentheses, is a formula to reward values closer to the middle of the distribution. Originally, we created a formula that rewards low activity, however that would heavily favor nighttime hours, when individuals are likely to be sleeping. To combat this, we used this formula to ensure that moderate intensity is favored. If there is moderate intensity, we can be more confident that an individual is not sleeping during that time interval but rather is resting.
+
+Inside the second set of parentheses, is the normalized value of sleep per datapoint, subtracted from the normalized maximum value of one. This allows the score to best reward low sleep values.
+
+Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score based on our use-case. We decided to weigh sleep more heavily than intensity, as an individual who is sleeping has no potential to consume a marketing advertisement, whereas a woke but active individual could still be exposed to marketing.
+
+
+**Opportunity Score Results**
+```{r}
+summary(minutes_summary_df$opportunity_score)
+mean(minutes_summary_df$opportunity_score)
+sd(minutes_summary_df$opportunity_score)
+var(minutes_summary_df$opportunity_score)
+```
+```{r}
+summary(hourly_summary_df$opportunity_score)
+mean(hourly_summary_df$opportunity_score)
+sd(hourly_summary_df$opportunity_score)
+var(hourly_summary_df$opportunity_score)
+```
+Displayed above are the summary and descriptive statistics of the newly derived feature opportunity score. The mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. When looking at the summary statistics, the first and third quartiles appear to be relatively low. These early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew. As we go on, this is something that we felt was necessary to investigate and account for.
+
+```{r}
+hourly_summary_df <- minutes_summary_df %>%
+  group_by(hour_military) %>%
+  summarize(opportunity_score = mean(opportunity_score, na.rm = TRUE),
+            norm_intensity = mean(norm_intensity, na.rm = TRUE),
+            norm_sleep = mean(norm_sleep, na.rm = TRUE)
+            )
+            
+```
+
+```{r}
+minutes_summary_df <- minutes_summary_df %>%
+  mutate(
+    opportunity_level = cut(opportunity_score,
+                            breaks = quantile(opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                            labels = c("bad", "mid", "good"),
+                            include.lowest = TRUE)
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
+  mutate(
+    opportunity_level = cut(opportunity_score,
+                            breaks = quantile(opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                            labels = c("bad", "mid", "good"),
+                            include.lowest = TRUE)
+  )
+```
+
+#More EDA (Lincoln)
+ How did your question change, if at all, after Exploratory Data Analysis?   Based on EDA can you begin to sketch out an answer to your question?  Summary of the dataset  Descriptive statistics  Graphical representations of the data  [Proper usage when applicable] Measures of Variance / sd 
+
+## Boxplot Opportunity Score (Include descriptive statistics)
+```{r}
+```
+
+## Boxplot Intensity (Include descriptive statistics)
+```{r}
+```
+
+## Boxplot Sleep (Include descriptive statistics)
+```{r}
+```
+
+## Bar Graphs
+```{r}
+# Mean opportunity score by time interval
+ggplot(hourly_summary_df, aes(x = hour_military, y = opportunity_score)) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Average Opportunity Score by 1 Minute Interval (Best Time for TV Ads)",
+       x = "10 Minute Intervals (Military Time)",
+       y = "Mean Opportunity Score") +
+  theme(axis.text.x = element_blank())
+
+intensity_summary <- minutes_summary_df %>%
+  group_by(time_only) %>%
+  summarize(norm_intensity = mean(norm_intensity, na.rm = TRUE))
+
+# Mean intensity by time interval
+ggplot(intensity_summary, aes(x = time_only, y = norm_intensity)) +
+  geom_col(fill = "green") +
+  labs(title = "Average Intensity by 1 Minute Interval (Best Time for TV Ads)",
+       x = "10 Minute Intervals (Military Time)",
+       y = "Mean Intensity") +
+  theme(axis.text.x = element_blank())
+
+sleep_summary <- minutes_summary_df %>%
+  group_by(time_only) %>%
+  summarize(norm_sleep = mean(norm_sleep, na.rm = TRUE))
+
+# Mean sleep by time interval
+ggplot(sleep_summary, aes(x = time_only, y = norm_sleep)) +
+  geom_col(fill = "blue") +
+  labs(title = "Average Sleep by 1 Minute Interval (Best Time for TV Ads)",
+       x = "10 Minute Intervals (Military Time)",
+       y = "Mean Sleep") +
+  theme(axis.text.x = element_blank())
+```
+
+
+## QQ Plot Opportunity Score (Make sure to label)
+```{r}
+qqnorm(minutes_summary_df$opportunity_score)
+qqline(minutes_summary_df$opportunity_score, col = "red")
+
+qqnorm(hourly_summary_df$opportunity_score)
+qqline(hourly_summary_df$opportunity_score, col = "red")
+```
+
+## QQ Plot Intensity
+```{r}
+qqnorm(minutes_summary_df$norm_intensity)
+qqline(minutes_summary_df$norm_intensity, col = "red")
+
+qqnorm(hourly_summary_df$norm_intensity)
+qqline(hourly_summary_df$norm_intensity, col = "red")
+```
+
+
+## QQ Plot Sleep
+```{r}
+qqnorm(minutes_summary_df$norm_sleep)
+qqline(minutes_summary_df$norm_sleep, col = "red")
+
+qqnorm(hourly_summary_df$norm_sleep)
+qqline(hourly_summary_df$norm_sleep, col = "red")
+```
+
+## Histogram Distribution Plot Opportunity Score
+```{r}
+```
+
+## Histogram Intensity
+```{r}
+```
+
+## Histogram Sleep
+```{r}
+```
+
+
+##LINCOLN -> MAKE SURE TO INCLUDE Measures of Variance / sd  IF NECESSARY
+
+
+## Statistical Analysis (Naiyani)
+**TODO:**
+1. Run Kruskal Wallis on: Opportunity Score, Intensity, Sleep for both hourly and minutes
+2. Only move on wit
+2. Check for conditions to run chi square
+3. Run Chi Square on Opportunity Score by 10-minute intervals only since it is proven significant
+4. Run post hoc on Opportunity Score by 10-minute intervals only
+5. Write up your analysis and try to explain why we ran the tests that we did
+6. Conclusion
+
+# Kruskal Wallis Test-> Opportunity Score
+```{r}
+# Null Hypothesis: There is no difference in opportunity score between the different time intervals
+# Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
+kruskal.test(minutes_summary_df$opportunity_score ~ minutes_summary_df$time_only)
+```
+p-value < 0.05 so we reject the null hypothesis
+
+
+```{r}
+# Null Hypothesis: There is no difference in opportunity score between the different time intervals
+# Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
+kruskal.test(hourly_summary_df$opportunity_score ~ hourly_summary_df$hour_military)
+```
+
+p-value > 0.05 so we cannot reject the null hypothesis. we will no longer analyze the hourly_summary, as we cannot prove there is a difference between such intervals
+
+
+# Kruskal Wallis Test -> Intensity
+```{r}
+# Null Hypothesis: There is no difference in intensity between the different time intervals
+# Alternative Hypothesis: There is a difference in intensity between the different time intervals
+kruskal.test(minutes_summary_df$norm_intensity ~ minutes_summary_df$time_only)
+```
+
+
+# Kruskal Wallis Test -> Sleep
+```{r}
+# Null Hypothesis: There is no difference in sleep between the different time intervals
+# Alternative Hypothesis: There is a difference in sleep between the different time intervals
+kruskal.test(minutes_summary_df$norm_sleep ~ minutes_summary_df$time_only)
+```
+
+# Chi Square Test Opportunity Score By Hour Intervals
+```{r}
+# check for chi square assumptions in 10 minute intervals
+nrow(minutes_summary_df %>% filter(opportunity_level == "good"))
+nrow(minutes_summary_df %>% filter(opportunity_level == "mid"))
+nrow(minutes_summary_df %>% filter(opportunity_level == "bad"))
+```
+
+All of the expected values are greater than 5, so we can run a chi square test.
+
+# Chi Square Test Opportunity Score By 10 Minutes
+```{r}
+# Null Hypothesis: There is no association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is similar throughout all the 10 minute intervals.
+# Alternative Hypothesis: There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
+chisq.test(minutes_summary_df$time_only, minutes_summary_df$opportunity_level)
+```
+
+p < 0.05, so we reject the null hypothesis, and accept the alternative hypothesis. There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
+
+# Post Hoc Analysis (decide at the end whether or not this is necessary)
+```{r}
+
+```
+
+## Conclusions
+# Final Slides
+
+
+
+
