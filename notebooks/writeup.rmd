@@ -159,6 +159,34 @@ var(intervals_df$opportunity_score)
 ```
 Displayed above are the summary and descriptive statistics of the newly derived feature opportunity score. The mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. When looking at the summary statistics, the first and third quartiles appear to be relatively low. These early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew. As we go on, this is something that we felt was necessary to investigate and account for.
 
+```{r}
+hourly_summary_df <- intervals_df %>%
+  group_by(hour_military) %>%
+  summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE),
+            mean_norm_intensity = mean(norm_intensity, na.rm = TRUE),
+            mean_norm_sleep = mean(norm_sleep, na.rm = TRUE)
+            )
+            
+```
+
+```{r}
+minutes_summary_df <- intervals_df %>%
+  mutate(
+    opportunity_level = cut(opportunity_score,
+                            breaks = quantile(opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                            labels = c("bad", "mid", "good"),
+                            include.lowest = TRUE)
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
+  mutate(
+    opportunity_level = cut(mean_opportunity_score,
+                            breaks = quantile(mean_opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                            labels = c("bad", "mid", "good"),
+                            include.lowest = TRUE)
+  )
+```
+
 #More EDA (Lincoln)
  How did your question change, if at all, after Exploratory Data Analysis?   Based on EDA can you begin to sketch out an answer to your question?  Summary of the dataset  Descriptive statistics  Graphical representations of the data  [Proper usage when applicable] Measures of Variance / sd 
 
@@ -176,19 +204,15 @@ Displayed above are the summary and descriptive statistics of the newly derived 
 
 ## Bar Graphs
 ```{r}
-score_summary <- intervals_df %>%
-  group_by(time_only) %>%
-  summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE))
-
 # Mean opportunity score by time interval
-ggplot(score_summary, aes(x = time_only, y = mean_opportunity_score)) +
+ggplot(hourly_summary_df, aes(x = hour_military, y = mean_opportunity_score)) +
   geom_col(fill = "darkorange") +
   labs(title = "Average Opportunity Score by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
        y = "Mean Opportunity Score") +
   theme(axis.text.x = element_blank())
 
-intensity_summary <- intervals_df %>%
+intensity_summary <- minutes_summary_df %>%
   group_by(time_only) %>%
   summarize(mean_norm_intensity = mean(norm_intensity, na.rm = TRUE))
 
@@ -200,7 +224,7 @@ ggplot(intensity_summary, aes(x = time_only, y = mean_norm_intensity)) +
        y = "Mean Intensity") +
   theme(axis.text.x = element_blank())
 
-sleep_summary <- intervals_df %>%
+sleep_summary <- minutes_summary_df %>%
   group_by(time_only) %>%
   summarize(mean_norm_sleep = mean(norm_sleep, na.rm = TRUE))
 
@@ -216,23 +240,23 @@ ggplot(sleep_summary, aes(x = time_only, y = mean_norm_sleep)) +
 
 ## QQ Plot Opportunity Score (Make sure to label)
 ```{r}
-qqnorm(intervals_df$opportunity_score)
-qqline(intervals_df$opportunity_score, col = "red")
+qqnorm(minutes_summary_df$opportunity_score)
+qqline(minutes_summary_df$opportunity_score, col = "red")
 
 #shapiro.test(intervals_df$opportunity_score)
 ```
 
 ## QQ Plot Intensity
 ```{r}
-qqnorm(intervals_df$avg_intensity)
-qqline(intervals_df$avg_intensity, col = "red")
+qqnorm(minutes_summary_df$avg_intensity)
+qqline(minutes_summary_df$avg_intensity, col = "red")
 ```
 
 
 ## QQ Plot Sleep
 ```{r}
-qqnorm(intervals_df$avg_sleep)
-qqline(sleep_summary$mean_norm_sleep, col = "red")
+qqnorm(minutes_summary_df$avg_sleep)
+qqline(minutes_summary_df$avg_sleep, col = "red")
 #shapiro.test(intervals_df$avg_sleep)
 ```
 
@@ -259,8 +283,20 @@ qqline(sleep_summary$mean_norm_sleep, col = "red")
 # Null Hypothesis: There is no difference in opportunity score between the different time intervals
 # Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
 
-kruskal.test(intervals_df$opportunity_score ~ intervals_df$time_only)
+kruskal.test(minutes_summary_df$opportunity_score ~ minutes_summary_df$time_only)
 ```
+p-value < 0.05 so we reject the null hypothesis
+
+
+```{r}
+# Null Hypothesis: There is no difference in opportunity score between the different time intervals
+# Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
+hourly_summary_df$mean_opportunity_score
+kruskal.test(hourly_summary_df$mean_opportunity_score ~ hourly_summary_df$hour_military)
+```
+
+p-value > 0.05 so we cannot reject the null hypothesis. we will no longer analyze the hourly_summary, as we cannot prove there is a difference between such intervals
+
 
 # Kruskal Wallis Test -> Intensity
 ```{r}
@@ -274,9 +310,25 @@ kruskal.test(intervals_df$opportunity_score ~ intervals_df$time_only)
 # Alternative Hypothesis: There is a difference in sleep between the different time intervals
 ```
 
-# Chi Square Test Opportunity Score
+# Chi Square Test Opportunity Score By Hour Intervals
 ```{r}
+# check for chi square assumptions in 10 minute intervals
+nrow(minutes_summary_df %>% filter(opportunity_level == "good"))
+nrow(minutes_summary_df %>% filter(opportunity_level == "mid"))
+nrow(minutes_summary_df %>% filter(opportunity_level == "bad"))
 ```
+
+All of the expected values are greater than 5, so we can run a chi square test.
+
+# Chi Square Test Opportunity Score By 10 Minutes
+```{r}
+# Null Hypothesis: There is no association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is similar throughout all the 10 minute intervals.
+# Alternative Hypothesis: There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
+chisq.test(minutes_summary_df$time_only, minutes_summary_df$opportunity_level)
+```
+
+p < 0.05, so we reject the null hypothesis
+
 
 # Chi Square Test Intensity
 ```{r}
