@@ -303,12 +303,13 @@ qqline(hourly_summary_df$norm_sleep, col = "red")
 
 ## Statistical Analysis (Naiyani)
 **TODO:**
-1. Run Kruskal Wallis on: Opporunity Score, Intensity, Sleep for both hourly and minutes
+1. Run Kruskal Wallis on: Opportunity Score, Intensity, Sleep for both hourly and minutes
 2. Only move on wit
 2. Check for conditions to run chi square
-3. Run Chi Square on Opportunity Score by 10-minute intervals only since it is proven signifcant
+3. Run Chi Square on Opportunity Score by 10-minute intervals only since it is proven significant
 4. Run post hoc on Opportunity Score by 10-minute intervals only
 5. Write up your analysis and try to explain why we ran the tests that we did
+6. Conclusion
 
 # Kruskal Wallis Test-> Opportunity Score
 ```{r}
