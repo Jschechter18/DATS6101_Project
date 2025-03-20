@@ -58,11 +58,14 @@ hourly_summary_df <- intervals_df %>%
     avg_intensity = mean(avg_intensity, na.rm = TRUE),
     avg_calories = mean(avg_calories, na.rm = TRUE),
   )
+
+minutes_summary_df <- intervals_df
 ```
 
 **Hourly Summary**
 ```{r}
 summary(hourly_summary_df)
+summary(minutes_summary_df)
 ```
 
 ## Exploratory Data Analysis (EDA)
@@ -116,7 +119,13 @@ After running the correlation matrix, our suspicions were confirmed. Average ste
 
 
 ```{r}
-intervals_df <- intervals_df %>%
+minutes_summary_df <- minutes_summary_df %>%
+  mutate(
+    norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
+    norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
   mutate(
     norm_sleep = (avg_sleep - min(avg_sleep)) / (max(avg_sleep) - min(avg_sleep)),
     norm_intensity = (avg_intensity - min(avg_intensity)) / (max(avg_intensity) - min(avg_intensity))
@@ -128,9 +137,13 @@ intervals_df <- intervals_df %>%
 weight_intensity <- 0.4
 weight_sleep <- 0.6
 
-intervals_df <- intervals_df %>%
+minutes_summary_df <- minutes_summary_df %>%
   mutate(
-    #opportunity_score = weight_intensity*(1 - norm_intensity) + weight_sleep*(1 - norm_sleep)
+    opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
+  )
+
+hourly_summary_df <- hourly_summary_df %>%
+  mutate(
     opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
   )
 ```
@@ -152,25 +165,31 @@ Each set of parameters are multiplied by a weight value. The weights were determ
 
 **Opportunity Score Results**
 ```{r}
-summary(intervals_df$opportunity_score)
-mean(intervals_df$opportunity_score)
-sd(intervals_df$opportunity_score)
-var(intervals_df$opportunity_score)
+summary(minutes_summary_df$opportunity_score)
+mean(minutes_summary_df$opportunity_score)
+sd(minutes_summary_df$opportunity_score)
+var(minutes_summary_df$opportunity_score)
+```
+```{r}
+summary(hourly_summary_df$opportunity_score)
+mean(hourly_summary_df$opportunity_score)
+sd(hourly_summary_df$opportunity_score)
+var(hourly_summary_df$opportunity_score)
 ```
 Displayed above are the summary and descriptive statistics of the newly derived feature opportunity score. The mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. When looking at the summary statistics, the first and third quartiles appear to be relatively low. These early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew. As we go on, this is something that we felt was necessary to investigate and account for.
 
 ```{r}
-hourly_summary_df <- intervals_df %>%
+hourly_summary_df <- minutes_summary_df %>%
   group_by(hour_military) %>%
-  summarize(mean_opportunity_score = mean(opportunity_score, na.rm = TRUE),
-            mean_norm_intensity = mean(norm_intensity, na.rm = TRUE),
-            mean_norm_sleep = mean(norm_sleep, na.rm = TRUE)
+  summarize(opportunity_score = mean(opportunity_score, na.rm = TRUE),
+            norm_intensity = mean(norm_intensity, na.rm = TRUE),
+            norm_sleep = mean(norm_sleep, na.rm = TRUE)
             )
             
 ```
 
 ```{r}
-minutes_summary_df <- intervals_df %>%
+minutes_summary_df <- minutes_summary_df %>%
   mutate(
     opportunity_level = cut(opportunity_score,
                             breaks = quantile(opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
@@ -180,8 +199,8 @@ minutes_summary_df <- intervals_df %>%
 
 hourly_summary_df <- hourly_summary_df %>%
   mutate(
-    opportunity_level = cut(mean_opportunity_score,
-                            breaks = quantile(mean_opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+    opportunity_level = cut(opportunity_score,
+                            breaks = quantile(opportunity_score, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
                             labels = c("bad", "mid", "good"),
                             include.lowest = TRUE)
   )
@@ -205,7 +224,7 @@ hourly_summary_df <- hourly_summary_df %>%
 ## Bar Graphs
 ```{r}
 # Mean opportunity score by time interval
-ggplot(hourly_summary_df, aes(x = hour_military, y = mean_opportunity_score)) +
+ggplot(hourly_summary_df, aes(x = hour_military, y = opportunity_score)) +
   geom_col(fill = "darkorange") +
   labs(title = "Average Opportunity Score by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
@@ -214,10 +233,10 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = mean_opportunity_score)) +
 
 intensity_summary <- minutes_summary_df %>%
   group_by(time_only) %>%
-  summarize(mean_norm_intensity = mean(norm_intensity, na.rm = TRUE))
+  summarize(norm_intensity = mean(norm_intensity, na.rm = TRUE))
 
 # Mean intensity by time interval
-ggplot(intensity_summary, aes(x = time_only, y = mean_norm_intensity)) +
+ggplot(intensity_summary, aes(x = time_only, y = norm_intensity)) +
   geom_col(fill = "green") +
   labs(title = "Average Intensity by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
@@ -226,10 +245,10 @@ ggplot(intensity_summary, aes(x = time_only, y = mean_norm_intensity)) +
 
 sleep_summary <- minutes_summary_df %>%
   group_by(time_only) %>%
-  summarize(mean_norm_sleep = mean(norm_sleep, na.rm = TRUE))
+  summarize(norm_sleep = mean(norm_sleep, na.rm = TRUE))
 
 # Mean sleep by time interval
-ggplot(sleep_summary, aes(x = time_only, y = mean_norm_sleep)) +
+ggplot(sleep_summary, aes(x = time_only, y = norm_sleep)) +
   geom_col(fill = "blue") +
   labs(title = "Average Sleep by 1 Minute Interval (Best Time for TV Ads)",
        x = "10 Minute Intervals (Military Time)",
@@ -243,21 +262,27 @@ ggplot(sleep_summary, aes(x = time_only, y = mean_norm_sleep)) +
 qqnorm(minutes_summary_df$opportunity_score)
 qqline(minutes_summary_df$opportunity_score, col = "red")
 
-#shapiro.test(intervals_df$opportunity_score)
+qqnorm(hourly_summary_df$opportunity_score)
+qqline(hourly_summary_df$opportunity_score, col = "red")
 ```
 
 ## QQ Plot Intensity
 ```{r}
-qqnorm(minutes_summary_df$avg_intensity)
-qqline(minutes_summary_df$avg_intensity, col = "red")
+qqnorm(minutes_summary_df$norm_intensity)
+qqline(minutes_summary_df$norm_intensity, col = "red")
+
+qqnorm(hourly_summary_df$norm_intensity)
+qqline(hourly_summary_df$norm_intensity, col = "red")
 ```
 
 
 ## QQ Plot Sleep
 ```{r}
-qqnorm(minutes_summary_df$avg_sleep)
-qqline(minutes_summary_df$avg_sleep, col = "red")
-#shapiro.test(intervals_df$avg_sleep)
+qqnorm(minutes_summary_df$norm_sleep)
+qqline(minutes_summary_df$norm_sleep, col = "red")
+
+qqnorm(hourly_summary_df$norm_sleep)
+qqline(hourly_summary_df$norm_sleep, col = "red")
 ```
 
 ## Histogram Distribution Plot Opportunity Score
@@ -277,12 +302,18 @@ qqline(minutes_summary_df$avg_sleep, col = "red")
 
 
 ## Statistical Analysis (Naiyani)
+**TODO:**
+1. Run Kruskal Wallis on: Opporunity Score, Intensity, Sleep for both hourly and minutes
+2. Only move on wit
+2. Check for conditions to run chi square
+3. Run Chi Square on Opportunity Score by 10-minute intervals only since it is proven signifcant
+4. Run post hoc on Opportunity Score by 10-minute intervals only
+5. Write up your analysis and try to explain why we ran the tests that we did
 
 # Kruskal Wallis Test-> Opportunity Score
 ```{r}
 # Null Hypothesis: There is no difference in opportunity score between the different time intervals
 # Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
-
 kruskal.test(minutes_summary_df$opportunity_score ~ minutes_summary_df$time_only)
 ```
 p-value < 0.05 so we reject the null hypothesis
@@ -291,8 +322,7 @@ p-value < 0.05 so we reject the null hypothesis
 ```{r}
 # Null Hypothesis: There is no difference in opportunity score between the different time intervals
 # Alternative Hypothesis: There is a difference in opportunity score between the different time intervals
-hourly_summary_df$mean_opportunity_score
-kruskal.test(hourly_summary_df$mean_opportunity_score ~ hourly_summary_df$hour_military)
+kruskal.test(hourly_summary_df$opportunity_score ~ hourly_summary_df$hour_military)
 ```
 
 p-value > 0.05 so we cannot reject the null hypothesis. we will no longer analyze the hourly_summary, as we cannot prove there is a difference between such intervals
@@ -302,12 +332,15 @@ p-value > 0.05 so we cannot reject the null hypothesis. we will no longer analyz
 ```{r}
 # Null Hypothesis: There is no difference in intensity between the different time intervals
 # Alternative Hypothesis: There is a difference in intensity between the different time intervals
+kruskal.test(minutes_summary_df$norm_intensity ~ minutes_summary_df$time_only)
 ```
+
 
 # Kruskal Wallis Test -> Sleep
 ```{r}
 # Null Hypothesis: There is no difference in sleep between the different time intervals
 # Alternative Hypothesis: There is a difference in sleep between the different time intervals
+kruskal.test(minutes_summary_df$norm_sleep ~ minutes_summary_df$time_only)
 ```
 
 # Chi Square Test Opportunity Score By Hour Intervals
@@ -327,19 +360,11 @@ All of the expected values are greater than 5, so we can run a chi square test.
 chisq.test(minutes_summary_df$time_only, minutes_summary_df$opportunity_level)
 ```
 
-p < 0.05, so we reject the null hypothesis
-
-
-# Chi Square Test Intensity
-```{r}
-```
-
-# Chi Square Test Sleep
-```{r}
-```
+p < 0.05, so we reject the null hypothesis, and accept the alternative hypothesis. There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
 
 # Post Hoc Analysis (decide at the end whether or not this is necessary)
 ```{r}
+
 ```
 
 ## Conclusions
