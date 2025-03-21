@@ -395,7 +395,6 @@ Additionally, physical intensity levels exhibit low deviation, supporting earlie
 
 ##LINCOLN -> MAKE SURE TO INCLUDE Measures of Variance / sd  IF NECESSARY
 
-
 ## Statistical Analysis (Naiyani)
 **TODO:**
 1. Run Kruskal Wallis on: Opportunity Score, Intensity, Sleep for both hourly and minutes
@@ -430,7 +429,7 @@ p-value > 0.05 so we cannot reject the null hypothesis. we will no longer analyz
 # Alternative Hypothesis: There is a difference in intensity between the different time intervals
 kruskal.test(minutes_summary_df$norm_intensity ~ minutes_summary_df$time_only)
 ```
-
+p-value < 0.05 so we reject the null hypothesis
 
 # Kruskal Wallis Test -> Sleep
 ```{r}
@@ -438,6 +437,13 @@ kruskal.test(minutes_summary_df$norm_intensity ~ minutes_summary_df$time_only)
 # Alternative Hypothesis: There is a difference in sleep between the different time intervals
 kruskal.test(minutes_summary_df$norm_sleep ~ minutes_summary_df$time_only)
 ```
+p-value < 0.05 so we reject the null hypothesis
+
+
+- Opportunity scores, activity intensity, and sleep patterns change significantly at different times, meaning time affects these factors.
+- However, when looking at opportunity scores by the hour, there was no big difference. This suggests that analyzing time in smaller units (like minutes) gives better insights. 
+- To understand these changes better, we can look at which specific time periods have the biggest impact.
+
 
 # Chi Square Test Opportunity Score By Hour Intervals
 ```{r}
@@ -458,14 +464,56 @@ chisq.test(minutes_summary_df$time_only, minutes_summary_df$opportunity_level)
 
 p < 0.05, so we reject the null hypothesis, and accept the alternative hypothesis. There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
 
-# Post Hoc Analysis (decide at the end whether or not this is necessary)
-```{r}
 
-```
+- The chi-square test shows that opportunity levels (good, mid, bad) are not evenly distributed across 10-minute intervals. This means that time plays a role in determining opportunity levels. 
+- Since the p-value is very small (p < 0.05), we can confidently say that certain time intervals have a higher or lower chance of being classified as good, mid, or bad.
+- Further analysis could help identify which specific time periods have the most impact.(Post-Hoc Test)
 
 ## Conclusions
+
+In this study, we wanted to figure out the best times to show marketing ads based on when people are most likely to pay attention. We thought that people would be more open to ads when they are awake but resting. To test this, we used Fitbit data from 35 participants over a month, looking at their sleep patterns, activity levels, steps, and calories burned.
+
+Through our analysis, we found that people are more active during the day and less active at night. We created a score that helped us understand the best times to show ads, based on how active or restful the person was. We gave more importance to sleep, since someone who is sleeping won’t be paying attention to ads, while someone who is only lightly active might still see them.
+
+The results showed that early mornings and late evenings were better times for ads, as people were awake but not too active. However, we also found that most of the time slots had lower scores, meaning those periods weren't ideal for ads.
+
+In conclusion, this study suggests that showing ads when people are awake but resting might work better. In the future, we could improve this by considering more factors to make the timing of ads even more accurate.
+
 # Final Slides
 
+What does this mean for the Businesses?
 
+1. Pritorize high scoring time slots to maximize how this analysis can help
 
+To get the most viewers for TV ads, it's important to show them during peak hours when more people are watching. These times are usually in the evening (7–10 PM) when families and working professionals are relaxing at home.
+Looking at TV ratings and past viewer data can help find the best time slots to reach the biggest audience
 
+2. Using demographic data to fine tune targeting and improved Ad effectiveness
+
+Different ads work better for different groups of people. Advertisers should look at factors like age, gender, income, and interests to place ads in the right time slots. For example, a toy company should run ads during children's shows, while a luxury brand might target late-night business news programs. Matching ads to the right audience makes them more effective and increases sales.
+
+3. Find the best days of the week to run ads
+
+Audience habits change throughout the week:
+
+-Weekday evenings (Monday-Friday, 7–10 PM): Popular for news and entertainment.
+
+-Weekend mornings and afternoons: Good for family-friendly ads.
+
+-Friday and Saturday nights: Best for ads related to entertainment and sports.
+
+By studying these trends, advertisers can focus their budgets on days when more people are watching and avoid wasting money on low-viewership periods
+
+4. Extend research to seasonal patterns to determine the best time of year for Ad placements
+
+Viewership changes depending on the time of year. Some key seasons include:
+
+-Holiday seasons (Thanksgiving, Christmas, New Year’s): People watch more TV, making it a great time for ads related to shopping, travel, and food.
+
+-Back-to-school season (August-September): A good time for ads about school supplies, clothes, and tech gadgets.
+
+-Big sports events (Super Bowl, World Cup, Olympics): Best for brands targeting sports fans.
+
+-Summer months: People spend more time outdoors, so TV ads may need to focus on families and vacation-related products.
+
+-By adjusting ad placements based on seasonal trends, advertisers can reach the right audience at the right time.
