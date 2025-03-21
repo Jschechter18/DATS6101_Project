@@ -105,7 +105,7 @@ calories_per_minute <- calories %>%
   summarise(avg_calories = mean(Calories, na.rm = TRUE), .groups = "drop")
 ```
 
-# Summarize data to 10-minute intervals (incorrect)
+# Summarize data to 10-minute intervals
 ```{r}
 steps_10min <- steps %>%
   mutate(interval_start = floor_date(ActivityMinute, unit = "10 minutes")) %>%
@@ -130,8 +130,8 @@ calories_10min <- calories %>%
 
 # Merge datasets
 ```{r}
-interval_data <- sleep_10min %>%
-  left_join(steps_10min, by = c("interval_start")) %>%
+interval_data <- steps_10min %>%
+  left_join(sleep_10min, by = c("interval_start")) %>%
   left_join(intensity_10min, by = c("interval_start")) %>%
   left_join(calories_10min, by = c("interval_start"))
 
@@ -149,6 +149,10 @@ interval_data <- interval_data %>%
 
 interval_data <- interval_data %>%
   mutate(hour_military = format(interval_start, "%H"))
+```
+
+```{r}
+sum(is.na(interval_data$avg_steps))
 ```
 
 ```{r}

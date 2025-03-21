@@ -1,11 +1,12 @@
 ---
-title: "Identifying Optimal Time Slots for Marketing Use"
+title: "Identifying Optimal Time Slots for Marketing and Advertisements"
 author: "Josh Schechter, Naiyani Paladugu, Lincoln, Orellana"
 date: "2025-03-18"
 output:
   html_document:
     code_folding: hide
-
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -27,21 +28,21 @@ intervals_df$time_only <- ifelse(nchar(intervals_df$interval_start) >= 19,
                        "00:00:00")
 ```
 
-## Introduction
+# Introduction
 
-Marketing is an effective tool for expanding knowledge about a given product or service. However, these advertisements must be aired at a time when people are available to view them to reach the largest possible audience. Our research sets out to determine the best times of day to air advertisements based on the availability of individuals. Our proposal is that potential customers are most available to be susceptible to consuming advertisements when they are awake but also resting. We collected data from Fitbit watch users which track features of 35 individuals throughout the course of a month, each with a day and time index. Our goal is to use these features at each time step to determine what time of day individuals are most susceptible to consuming marketing advertisements. We will do this by determining features of interest from the dataset, creating a scoring metric for each time interval, and determining if those time slots yield significant differences from one another. Based on the scoring function we derived and the statistical tests we ran on it; we determined that certain times of day are better for airing advertisements than others.
+It is well known that studies suggest that advertisements and marketing campaigns yield positive results for product sales, brand name expansion, and general success of business. For the best results, these marketing campaigns must maximize the number of potential customers. Our study sets out to find the time intervals throughout the course of the day when marketing potential is at its highest. We make the assumption that marketing potential is at its highest when potential customers are most available, specifically times of day when individuals are awake and exhausting little physical energy. We collected data from Fitbit smart watch users which track various features of 35 individuals throughout the course of a month, each with a day and time index. Our goal is to use these features at each time step to determine the times of day when individuals are most susceptible to these marketing advertisements. We do this by identifying features of interest from the dataset, creating a scoring metric for each time interval, and determining if the scores at said time intervals yield significant differences from one another. Based on the scoring function we derived, along with the statistical tests we ran; we determined that certain times of day are better for advertising than others.
 
-## Data Preprocessing
+# Data Preprocessing
 
-Our original dataset collected numerous features over a 1-month period, however not all features were found to be useful for our use-case. In fact, many features were not able to effectively join on our time intervals, so we decided to simply exclude them altogether. Other features were logged by minute and were easily merged on the derived time intervals. These features were as follows: average sleep, average steps taken, average intensity—scaled 1-3, with 3 being the highest—and average calories. Features that could have merged, but we decided to exclude due to redundancy were average METs (direct relationship with calories) and average heart rate.
+Our original dataset collected various features over a 1-month period, however not all features were found to be useful for our use-case. In fact, many features were not able to effectively join on our time intervals as they were indexed by individuals rather than time, leading us to exclude these features altogether. Other features were logged by minute of the day, and were easily merged on the derived time intervals. These features were as follows: average sleep-scaled 1-3, with 1 being asleep, 2 and 3 being awake-average steps taken, average intensity—scaled 1-3, with 3 being the highest—and average calories. Features that could have merged, but we decided to exclude due to redundancy were average METs (direct relationship with calories) and average heart rate.
 
-We then aimed to condense our dataset into fewer datapoints, as time steps of 1-minute intervals were unnecessarily large. What we decided was to reduce the datapoints by changing the time intervals from 1-minute to 10-minutes, with feature values representing the mean for 1-minute interval averages. This condensed the data into more useful time slots for potential advertisers to analyze.
+We then aimed to condense our dataset into fewer datapoints, as time steps of 1-minute intervals were unnecessarily large. We reduced the datapoints by changing the time intervals from 1-minute to 10-minutes, with feature values representing the mean for 1-minute interval averages. This condensed the data into more useful time slots for potential advertisers to analyze.
 
-To complete our data frame we wanted to add some more columns that we thought could help to place data into bins for simplistic visualization at a later time. These columns were time of day, and military hour of the day. At this point, we are left with 4530 observations, each representing a 10-minute interval.
+Next we wanted to add some more columns that we thought could help to place data into bins for simplistic visualization at a later time. These columns were time of day, and military hour of the day. At this point, we are left with 4530 observations, each representing a 10-minute interval.
 
 Finally, we cleaned our data of missing points. There were missing data points for individuals-often in chunks-at arbitrary timesteps, where we assumed that the individual was not wearing their Fitbit at that time. We elected to remove such observations. Interestingly, every individual was missing datapoints between the hours of 2:00 AM to 3:00 AM on March 13th, 2016. This was due to a time shift for daylight savings, meaning the times technically did not exist, so we removed those missing datapoints. Ultimately any datapoint with missing data was removed from the dataset.
-Displayed below is a summary of the final data frame.
 
+## Data Summary
 ```{r}
 head(intervals_df)
 summary(intervals_df)
@@ -60,15 +61,16 @@ hourly_summary_df <- intervals_df %>%
 minutes_summary_df <- intervals_df
 ```
 
-**Hourly Summary**
+## Hourly Summary
 ```{r}
 summary(hourly_summary_df)
 summary(minutes_summary_df)
 ```
 
-## Exploratory Data Analysis (EDA)
+# Exploratory Data Analysis (EDA)
 
-**Initial time series plots**
+**Initial time series plots:**
+Before constructing our scoring function, we sought to look at the features available and see how those change over time. We put together time-series plots with 24 bins, one for each hour of the day, each point representing the average activity per minute from that hour of the day. From this, four plots were derived below.
 ```{r}
 # 1. Average Sleep
 ggplot(hourly_summary_df, aes(x = hour_military, y = avg_sleep)) +
@@ -99,21 +101,18 @@ ggplot(hourly_summary_df, aes(x = hour_military, y = avg_intensity)) +
   theme_minimal()
 ```
 
-Before constructing our scoring function, we sought to look at the features available and see how those change over time. We put together time-series plots with 24 bins, one for each hour of the day, each point representing the average activity per minute from that hour of the day. From this, four plots were derived.
-
 The first plot being, the average sleep per minute, for each hour of the day. As expected, we see a lower amount of sleep per minute during daylight hours, whereas that number goes up for nighttime.
 
 The second plot is the average number of steps taken per minute, for each hour of the day. Once again, we see an expected result, where daylight hours end up being the most steps per minute, with a significant decline during nighttime hours.  This trend continues for the next two plots as well. The first of which being average calories burned per minute, for each hour of the day. The second being the average intensity per minute, for each hour of the day. Both plots were consistent with the expectation of seeing higher values during daylight hours, and lower values at night. By looking at our visualizations, we inferred that some of our features are very strongly correlated, and decided to investigate this observation.
 
-**Correlation Matrix**
+**Correlation Matrix:**
+After visualizing how individual features behave throughout the day, we determined that there could be some strong correlations between average steps, calories, and intensity. If this was the case, it would make sense to remove some of the redundant features, allowing us to reduce the dimensionality of our scoring function. 
 ```{r}
 correlation_matrix <- cor(intervals_df[, c("avg_steps", "avg_sleep", "avg_calories","avg_intensity")])
 ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
-After visualizing how individual features behave throughout the day, we determined that there could be some strong correlations between average steps, calories, and intensity. If this was the case, it would make sense to remove some of the redundant features, allowing us to reduce the dimensionality of our scoring function. 
-
-After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had a very weak correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function, as we felt that one of these three features would be sufficient at representing activity level. At this point, we have identified our features of interest as average sleep and intensity.
+After running the correlation matrix, our suspicions were confirmed. Average steps, calories, and intensity were all very strongly correlated to one another. Notably, sleep had a very weak correlation to any of the other features. To reduce the dimensionality, we decided to exclude steps and calories from our scoring function, as we felt that any one of the three strongly correlated features would be sufficient at representing activity level. At this point, we have identified our features of interest as average sleep and intensity.
 
 
 ```{r}
@@ -130,7 +129,7 @@ hourly_summary_df <- hourly_summary_df %>%
   )
 ```
 
-**Break down opportunity Score**
+
 ```{r}
 weight_intensity <- 0.4
 weight_sleep <- 0.6
@@ -145,7 +144,7 @@ hourly_summary_df <- hourly_summary_df %>%
     opportunity_score = weight_intensity*(1 - abs(norm_intensity - 0.5) * 2) + weight_sleep*(1 - norm_sleep)
   )
 ```
-
+**Break down of opportunity Score:**
 By identifying any lingering redundancies in our dataset, we were now able to create our scoring function with the features sleep and intensity.
 
 Before creating our function, it was necessary to normalize—or scale—the features to support our scoring function. We found normalizing the data yielded better scores. After normalization our two new variables, norm_intensity, and norm_sleep represent the normalized datapoints for our intensity and sleep features.
@@ -154,14 +153,15 @@ Next, we created our scoring function, called opportunity score. The opportunity
 
 opportunity_score = 0.4\*(1 - |norm_intensity – 0.5| \* 2) + 0.6\*(1 - norm_sleep)
 
-Inside the first set of parentheses, is a formula to reward values closer to the middle of the distribution. Originally, we created a formula that rewards low activity, however that would heavily favor nighttime hours, when individuals are likely to be sleeping. To combat this, we used this formula to ensure that moderate intensity is favored. If there is moderate intensity, we can be more confident that an individual is not sleeping during that time interval but rather is resting.
+Inside the first set of parentheses, is a formula to reward values closer to the middle of the distribution. Originally, we created a formula that rewards low activity, however that would heavily favor nighttime hours, as individuals are likely to be sleeping. To combat this, we used this formula to ensure that moderate intensity is favored. If there is moderate intensity, we can be more confident that an individual is not sleeping during that time interval.
 
 Inside the second set of parentheses, is the normalized value of sleep per datapoint, subtracted from the normalized maximum value of one. This allows the score to best reward low sleep values.
 
-Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score based on our use-case. We decided to weigh sleep more heavily than intensity, as an individual who is sleeping has no potential to consume a marketing advertisement, whereas a woke but active individual could still be exposed to marketing.
+Each set of parameters are multiplied by a weight value. The weights were determined by how important we felt each feature was to the score based on our use-case. We decided to weigh sleep more heavily than intensity, as potential customers who are sleeping have no potential to view a marketing advertisement, whereas a woke but active individuals could still be exposed to these advertisements.
 
 
-**Opportunity Score Results**
+## Opportunity Score Results:
+Displayed below are the summary and descriptive statistics of the newly derived feature opportunity score.
 ```{r}
 summary(minutes_summary_df$opportunity_score)
 mean(minutes_summary_df$opportunity_score)
@@ -175,7 +175,9 @@ mean(hourly_summary_df$opportunity_score)
 sd(hourly_summary_df$opportunity_score)
 var(hourly_summary_df$opportunity_score)
 ```
-Displayed above are the summary and descriptive statistics of the newly derived feature opportunity score. The mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. When looking at the summary statistics, the first and third quartiles appear to be relatively low. These early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew. As we go on, this is something that we felt was necessary to investigate and account for.
+**Minute interval breakdown:** The mean is a score of 0.230, the standard deviation is 0.175, and the variance is 0.031. When looking at the summary statistics, the first and third quartiles appear to be relatively low. These early indications suggest that the distribution will be bottom heavy, where most scores are relatively low. Moreover, there is potential for a right skew. As we go on, this is something that we felt was necessary to investigate and account for.
+
+**Hourly interval breakdown:** The mean is a score of 0.322, the standard deviation is 0.223, and the variance is 0.050. The summary statistics for the hourly breakdown are very similar to the minute breakdown. This suggests that the opportunity score is consistent across both minute and hourly intervals. This is a good sign, as it suggests that our scoring function is consistent across different time intervals.
 
 ```{r}
 hourly_summary_df <- minutes_summary_df %>%
@@ -186,7 +188,7 @@ hourly_summary_df <- minutes_summary_df %>%
             )
             
 ```
-
+**Opportunity Level:** Our final step of setting up our opportunity scores, was to label each score as good, mid, or bad. We did this by creating bins for our scores, and then labeling each bin. By doing this, we hoped to be able to find that certain time slots cluster together into individual bins.
 ```{r}
 minutes_summary_df <- minutes_summary_df %>%
   mutate(
@@ -206,15 +208,16 @@ hourly_summary_df <- hourly_summary_df %>%
 ```
 
 
+**EDA of Opportunity Score and its Components**
 Understanding user behavior via sleep, intensity, and opportunity score metrics is crucial for optimizing advertising and engagement strategies. This EDA uses various boxplots, histograms, and statistical summaries to uncover trends in daily activity patters to help determine when users are most and least receptive to engagement.
 
-
-## Boxplot Opportunity Score (Include descriptive statistics)
+## Boxplot of Opportunity Scores:
+Below are boxplots of opportunity score, one an average of the 10-minute interval distribution, and the other a representation of an hourly distribution.
 ```{r}
 # Average
 ggplot(minutes_summary_df, aes(y = opportunity_score)) +
   geom_boxplot(fill = "lightblue", alpha = 0.7, outlier.color = "red") +
-  labs(title = "Overall Boxplot of Opportunity Score", y = "Opportunity Score") +
+  labs(title = "Overall Boxplot of Opportunity Score By 10-Minute Intervals", y = "Opportunity Score") +
   theme_minimal()
 
 summary(intervals_df$opportunity_score)
@@ -228,8 +231,14 @@ ggplot(hourly_summary_df, aes(x = as.factor(hour_military), y = opportunity_scor
 
 tapply(hourly_summary_df$opportunity_score, hourly_summary_df$hour_military, summary)
 ```
+**Opportunity Score By 10-Minute Intervals:**
+This boxplot gives us a visual representation of the summary statistics of the 10-minute intervals. This boxplot is an indication that the distribution may be bottom heavy, and has potential for a right tail, as there are many outliers.
 
-## Boxplot Intensity (Include descriptive statistics)
+**Opportunity Score By Hourly Intervals:**
+This boxplot provides a visual representation of the distributions of the hourly intervals throughout the day. Based on the output, it seems that while this is good for showing the trends, it is not a very helpful indication of binned distributions.
+
+## Boxplot of Intensity:
+Below are boxplots of intensity, one an average of the 10-minute interval distribution, and the other a representation of an hourly distribution.
 ```{r}
 # Average
 ggplot(minutes_summary_df, aes(y = norm_intensity)) +
@@ -250,7 +259,7 @@ tapply(hourly_summary_df$norm_intensity, hourly_summary_df$hour_military, summar
 
 Most users show low-to-moderate activity levels, suggesting sedentary behavior. When looking at the hourly boxplot, we see minimal activity being recorded between 00:00 and 05:00 AM, aligning with sleep hours until a sudden increase at 06:00 AM, suggesting a that people begin to wakeup for their daily routines. From 16:00-19:00, we observe yet another increase which can suggest evening commutes and routines. After 20:00, the intensity gradually declines to reinforce that late evening are more sedentary, however it is not so low that too many people are asleep. Based on these visualizations, these could be ideal times for advertisers to engage with users, as they are awake but not too active.
 
-## Boxplot Sleep (Include descriptive statistics)
+## Boxplot of Sleep:
 ```{r}
 # Average
 ggplot(minutes_summary_df, aes(y = norm_sleep)) +
@@ -270,7 +279,7 @@ tapply(hourly_summary_df$norm_sleep, hourly_summary_df$hour_military, summary)
 ```
 The overall average sleep boxplot is closest to 1, meaning users receive adequate sleep during expected hours. Some outliers are shown below 0.5, suggesting some users can either be disrupted during sleep or have irregular patterns. The hourly boxplot shows sleep is highest between 22:00 and 06:00, visualizing the transition from sleep to wakefulness. Logically, most people during the day would be doing some form of activity whether it'd be work, school, or exercise (hence why there are outliers between 10:00 and 16:00). Since the visualization shows early morning between 06:00 and 08:00 AM as a transitional period, it could be an optimal time for subtle engagement strategies, such as morning news briefings, podcasts, or passive advertisements.
 
-## Bar Graphs
+## Bar Graphs of Opportunity Score, Intensity, and Sleep
 ```{r}
 # Mean opportunity score by time interval
 ggplot(hourly_summary_df, aes(x = hour_military, y = opportunity_score)) +
@@ -307,39 +316,37 @@ ggplot(sleep_summary, aes(x = time_only, y = norm_sleep)) +
 
 The bar graphs depicting average opportunity score, intensity, and sleep by 10-minute intervals (values are 1 minute averages of the interval) provide a more granular view of activity trends throughout the day. The opportunity score peaks between mid-morning and late evening (8 AM – 10 AM and 8 PM – 11 PM), aligning with times when users are likely in a more passive state.
 
-The intensity bar graph further supports earlier findings—activity increases in the morning, peaks in the late afternoon, and declines into the evening. The sleep graph reinforces the expected cycle, with the lowest sleep scores occurring in daylight hours and reaching near-max levels at night. These visualizations provide a clear breakdown of the individual components that we used to calculate the opportunity score, offering insights into the best times for marketing engagement.
+The intensity bar graph further supports earlier findings—activity increases in the morning, peaks in the late afternoon, and declines into the evening. The sleep graph reinforces the expected cycle, with the lowest sleep scores occurring in daylight hours and reaching near-max levels at night. However, it is worth noting that despite the correct trend, sleep averages seem unusually high. This could be an indication that there is some sort of sampling issue regarding the data. These visualizations provide a clear breakdown of the individual components that we used to calculate the opportunity score, offering insights into the best times for marketing engagement.
 
-
-## QQ Plot Opportunity Score (Make sure to label)
+## QQ Plot Opportunity Score
 ```{r}
-qqnorm(minutes_summary_df$opportunity_score)
+qqnorm(minutes_summary_df$opportunity_score, main = "QQ Plot of Opportunity Score by 10-Minute Interval")
 qqline(minutes_summary_df$opportunity_score, col = "red")
 
-qqnorm(hourly_summary_df$opportunity_score)
+qqnorm(hourly_summary_df$opportunity_score, main = "QQ Plot of Opportunity Score by Hourly Interval")
 qqline(hourly_summary_df$opportunity_score, col = "red")
 ```
 
 ## QQ Plot Intensity
 ```{r}
-qqnorm(minutes_summary_df$norm_intensity)
+qqnorm(minutes_summary_df$norm_intensity, main = "QQ Plot of Intensity by 10-Minute Interval")
 qqline(minutes_summary_df$norm_intensity, col = "red")
 
-qqnorm(hourly_summary_df$norm_intensity)
+qqnorm(hourly_summary_df$norm_intensity, main = "QQ Plot of Intensity by Hourly Interval")
 qqline(hourly_summary_df$norm_intensity, col = "red")
 ```
 
 
 ## QQ Plot Sleep
 ```{r}
-qqnorm(minutes_summary_df$norm_sleep)
+qqnorm(minutes_summary_df$norm_sleep, main = "QQ Plot of Sleep by 10-Minute Interval")
 qqline(minutes_summary_df$norm_sleep, col = "red")
 
-qqnorm(hourly_summary_df$norm_sleep)
+qqnorm(hourly_summary_df$norm_sleep, , main = "QQ Plot of Sleep by Hourly Interval")
 qqline(hourly_summary_df$norm_sleep, col = "red")
 ```
 
-The Q-Q plots for sleep, intensity, and opportunity score confirm that none of these variables are normally distributed. Instead, they exhibit significant skewness, meaning that user behavior is highly variable. For Opportunity Score, we are able to see a right skew, indicating that the average is on the lower end, and there are outliers on the higher end that draw the mean up. This aligns with our earlier findings that most time steps receive low scores, but a few receive high scores. The Q-Q plots for intensity and sleep show similar patterns, with both variables displaying a right skew. This suggests that most users engage in low-intensity activities and receive high sleep scores, but a small subset of users exhibit high-intensity levels and low sleep scores. These findings underscore the importance of segmenting users based on their behaviors to optimize engagement strategies.
-
+The Q-Q plots for opportunity score, intensity, and sleep confirm our suspicion that none of these variables are normally distributed. Instead, they exhibit significant skewness. For Opportunity Score, we are able to see a right skew, indicating that the average is on the lower end, and there are outliers on the higher end that draw the mean up. This aligns with our earlier findings that most time steps receive low scores, but a few receive high scores. The Q-Q plot for intensity shows a similar pattern, displaying a right skew. The Q-Q plot for sleep, while showing a skew, is done so in the opposite direction. This distribution indicates that most time steps receive high sleep scores, with some low scores pulling the mean down.
 
 ## Histogram Distribution Plot Opportunity Score
 ```{r}
@@ -349,7 +356,7 @@ ggplot(minutes_summary_df, aes(x = opportunity_score)) +
   theme_minimal()
 ```
 
-After seeing the QQ plots suggested a right skew, it was important for us to look into the distribution in order to better visualize it. For opportunity score, the histogram shows most scores falling heavily on the left end of the distribution, with a tail on the right end. This indicates that there are a few time intervals that receive high scores, but the majority of intervals receive low scores. This aligns with our earlier findings that most time steps are not ideal for engagement.
+After seeing the QQ plots suggested a right skew, it was important for us to look into the distribution for a better visualization. For opportunity score, the histogram shows that most scores fall heavily on the left end of the distribution, with a tail on the right end. This indicates that there are a few time intervals that receive high scores, but the majority of intervals receive low scores. This aligns with our earlier observation that most time steps do not seem to be yield optimal opportunity scores.
 
 ## Histogram Intensity
 ```{r}
@@ -368,92 +375,74 @@ ggplot(minutes_summary_df, aes(x = norm_sleep)) +
 ```
 
 The histograms of intensity and sleep provide further context to our exploratory analysis. The intensity histogram reveals a right-skewed distribution, where most recorded values are low, confirming that users spend a significant portion of their time in low-movement states. The sleep histogram, in contrast, shows a strong left-skew, where most sleep values are clustered near 1.0, suggesting that the majority of users receive high sleep scores, but a small subset experiences irregular or fragmented sleep.
+All of these histogram distributions accurately reflect the trends observed in the boxplots, bar graphs, and Q-Q plots. Additionally, we can see that generally, opportunity score and intensity follow the same trend, while sleep is appears to be inversely correlated with the other two features.
 
-```{r}
-summary_stats <- intervals_df %>%
-  summarise(
-    sd_sleep = sd(avg_sleep, na.rm = TRUE),
-    iqr_sleep = IQR(avg_sleep, na.rm = TRUE),
-    sd_steps = sd(avg_steps, na.rm = TRUE),
-    iqr_steps = IQR(avg_steps, na.rm = TRUE),
-    sd_intensity = sd(avg_intensity, na.rm = TRUE),
-    iqr_intensity = IQR(avg_intensity, na.rm = TRUE),
-    sd_calories = sd(avg_calories, na.rm = TRUE),
-    iqr_calories = IQR(avg_calories, na.rm = TRUE)
-  )
-print(summary_stats)
-```
+Upon completion of EDA, there were important takeaways that we had become aware of. First, our opportunity scores did not have a normalized distribution. This is important to be aware of, as this limits what type of analysis we can conduct. Second, the opportunity scores are right skewed, indicating that good scores are scarce, and bad scores are common. Third, opportunity score and intensity seem to be somewhat related, while sleep appears indirectly correlated to the other features. This is an interesting finding, as it is an indication of whether or not our scoring function makes logical sense.
 
-The variance analysis provides crucial insights into the consistency and variability of user behaviors, reinforcing patterns observed in the EDA. The low standard deviation and interquartile range (IQR) for sleep suggest that most users follow predictable sleep schedules, with minimal variation between individuals. This consistency aligns with previous findings that nighttime hours (10 PM – 6 AM) are dominated by sleep, making them less ideal for engagement strategies. Conversely, step counts and caloric expenditure display high variability, indicating that while some users are highly active, others remain largely sedentary. This confirms the need for targeted engagement strategies based on behavioral segmentation, as a one-size-fits-all approach would be ineffective.
+# Statistical Analysis
 
-Additionally, physical intensity levels exhibit low deviation, supporting earlier conclusions that most users engage in low to moderate activity throughout the day. This suggests that advertising and content strategies should be optimized for moments of low intensity, particularly during lunch breaks and late evening hours when users are more likely to engage passively. Ultimately, this variance analysis strengthens the overall project goal—identifying the best times for digital engagement based on behavioral trends, ensuring content is delivered when users are most receptive.
-
-## Statistical Analysis
-
-Now that we have completed EDA, we can now move onto our statistical testing. Our QQ plots, along with our histogram distributions, made it clear to us that our data was not normalized. This caused us to have to eliminate any statistical tests that require a normal distribution, so we will be using non-parametric tests to analyze our data, namely the Kruskal-Wallis and Chi-Square tests.
+Now that we have completed EDA, we can now move onto our statistical testing. Our Q-Q plots, along with our histogram distributions, made it clear to us that our data was not normalized. This caused us to have to eliminate any statistical tests that require a normal distribution, so we will be using non-parametric tests to analyze our data, namely the Kruskal-Wallis and Chi-Square tests.
 
 The Kruskal-Wallis test will replace the ANOVA test, and will be used to determine if there is a significant difference in opportunity scores between different time intervals, both for our hourly and 10-minute interval breakdowns.
 
-The Chi-Square test will be used to determine if there are signifcant differences in the distribution of good, mid, and bad opportunity scores across 10-minute intervals. This will help us confirm if we have properly binned our time intervals.
+The Chi-Square test will be used to determine if there are significant differences in the distribution of good, mid, and bad opportunity scores across 10-minute intervals. This will help us determine wehther or not opportunity level is not randomly distributed across time.
 
-**Kruskal Wallis Test: Opportunity Scores Across 10-Minute Time Intervals**
-Below is the result of our first significance test. Our conditions are as follows:
-- Null Hypothesis: There is no difference in opportunity score between the different time intervals.
-- Alternative Hypothesis: There is a difference in opportunity score between the different time intervals.
+## Kruskal Wallis Test: Opportunity Scores Across 10-Minute Time Intervals
+Below is the result of our initial significance test, conducted under the following conditions: The *Null Hypothesis* posits that there is no variation in opportunity scores across different 10-minute intervals. Conversely, the *Alternative Hypothesis* suggests that there is a measurable difference in opportunity scores between these 10-minute intervals.
 ```{r}
 kruskal.test(minutes_summary_df$opportunity_score ~ minutes_summary_df$time_only)
 ```
-The resulting p-value is less than 0.05, allowing us to reject the null hypothesis that the opportunity scores accross all 10-minute time intervals is the same, and allowing us to accept the alternative hypothesis that there is a difference in opportunity scores across these 10-minute time intervals. We will continue with our analysis of the 10-minute intervals.
+The resulting p-value is less than 0.05, which allows us to reject the null hypothesis that the opportunity scores across all 10-minute time intervals are the same. Consequently, we accept the alternative hypothesis that there is a difference in opportunity scores across these 10-minute intervals. We will proceed with our analysis of the 10-minute intervals.
 
-
-
-**Kruskal Wallis Test: Opportunity Scores Across 1-Hour Time Intervals**
-Below is the result of our second significance test. Our conditions are as follows:
-- Null Hypothesis: There is no difference in opportunity score between the different 1 hour time intervals.
-- Alternative Hypothesis: There is a difference in opportunity score between the different 1 hour time intervals.
+## Kruskal Wallis Test: Opportunity Scores Across 1-Hour Time Intervals
+Below is the result of our initial significance test, conducted under the following conditions: The *Null Hypothesis* posits that there is no variation in opportunity scores across different 1 hour intervals. Conversely, the *Alternative Hypothesis* suggests that there is a measurable difference in opportunity scores between these 1 hour intervals.
 ```{r}
 kruskal.test(hourly_summary_df$opportunity_score ~ hourly_summary_df$hour_military)
 ```
 
-The resulting p-value is greater than 0.05, therefore we cannot reject the null hypothesis that the opportunity scores across all 1-hour time intervals are the same, and cannot accept the alternative hypothesis that there is a difference in opportunity scores across these 1-hour time intervals. This suggests that analyzing time in smaller units (like minutes) gives better insights. Consequently, we will no longer continue with a deeper analysis of these 1 hour time intervals.
+The resulting p-value is greater than 0.05, indicating that we cannot reject the null hypothesis which states that the opportunity scores across all 1-hour time intervals are the same. Consequently, we cannot accept the alternative hypothesis suggesting a difference in opportunity scores across these intervals. This implies that analyzing time in smaller units, such as minutes, may provide better insights. Therefore, we will discontinue the deeper analysis of these 1-hour time intervals.
 
-To understand these results better, we can look at which specific time periods have the biggest impact.
+To understand these results better, we can look at which specific time periods have the biggest impact using our opportunity levels feature.
 
-
-**Chi Square Test Conditions**
-
+## Chi Square Test Conditions
+Above we check to confirm that we can run the Chi Square test, as we must determine if each bin has at least 5 observations. Fortunately, the check confirms that we have more than 5 observations in each bin, so we can continue with our chi square test.
 ```{r}
 # check for chi square assumptions in 10 minute intervals
 nrow(minutes_summary_df %>% filter(opportunity_level == "good"))
 nrow(minutes_summary_df %>% filter(opportunity_level == "mid"))
 nrow(minutes_summary_df %>% filter(opportunity_level == "bad"))
 ```
-Above we check to confirm that we can run our chi square test, as we must determine if each bin has at least 5 observations. Fortunately, we have more than 5 observations in each bin, so we can continue with our chi square test.
+Looking at the individual bins, it is interesting to note, that similar to what we observed in our EDA above, there are far more bad opportunity scores than good or mid. This is an important observation to take note of, as it is an indication that our bins accurately reflect the distribution of opportunity scores.
 
 
-**Chi Square Test: Opportunity Level By 10 Minute Intervals**
-Below we run our Chi Square test on our opportunity level bins by 10-minute intervals. The goal is to determine if there is a significant difference between our bins. Our conditions are as follows:
-- Null Hypothesis: There is no association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is similar throughout all the 10 minute intervals.
-- Alternative Hypothesis: There is an association between 10 minute intervals and opportunity level, so the distribution of good, mid, and bad is not similar throughout all the 10 minute intervals.
+## Chi Square Test: Opportunity Level By 10 Minute Intervals
+Below we run our Chi Square test on our opportunity level bins by 10-minute intervals. The goal is to determine if there is a significant difference between our bins. Our conditions are as follows: the Null Hypothesis states that there is no association between time and opportunity level The Alternative Hypothesis posits that there is an association between time and opportunity level
 ```{r}
 chisq.test(minutes_summary_df$time_only, minutes_summary_df$opportunity_level)
 ```
-The resulting p-value is less than 0.05, so we reject the null hypothesis, and accept the alternative hypothesis. The distribution of good, mid, and bad is significant across the 10-minute time intervals. We can confidently say that certain time intervals have a higher or lower chance of being classified as good, mid, or bad.
+The resulting p-value is less than 0.05, so we reject the null hypothesis that there is no association between opportunity level and time, while accepting the alternative hypothesis that there is an association between opportunity level and time. We can now confidently say that opportunity scores, and hence their levels, are not randomly distributed across time intervals, and that there are in fact times of the day that yield better opportunity scores than others.
 
-Moreover, further analysis could help identify which specific time periods have the most impact.
+Moreover, further analysis could help identify which specific time periods have the most impact. Now that it is confirmed that each opportunity level does not exist due to chance, we can make recommendations for marketing hours based on our opportunity levels.
 
-## Conclusions
+## Good Opportunity Levels
+The table below displays the frequencies of the hours of the day that appear in the good opportunity level bin.
+```{r}
+table(minutes_summary_df$hour_military[minutes_summary_df$opportunity_level == "good"])
+```
+Our findings indicate that the most frequent high opportunity scores are between the hours of 20:00 and 22:00 (8 PM - 10 PM). This is a good indication that these time slots are the best for marketing advertisements, as individuals are awake but not too active. This is a good time to reach out to potential customers, as they are likely to be receptive to be most available.
 
-In this study, we wanted to figure out the best times to show marketing ads based on when people are most likely to be available. We defined this availability as that when individuals are awake but resting. To test this, we used Fitbit data from 35 participants over a 1 month span, looking at their sleep patterns and activity levels.
+# Conclusions
 
-Through our analysis, we found that people are more active during the day and less active at night. We created a score that helped us understand the best times to show ads, hoping to find the optimal time when individuals are inactive but also awake. We gave more importance to sleep by weighing it more heavily, since an individual who is sleeping has no chance to be effected by a marketing advertisement, while someone who is only lightly active might still pay attention.
+In this study, we wanted to figure out the best times to show marketing ads based on when people are most likely to be available. We defined this availability as when individuals are awake but resting. To test this, we used Fitbit data from 35 participants over a 1 month span, looking at their sleep patterns and activity levels.
 
-The results showed that early mornings and late evenings were better times for ads, as people were awake but not too active. However, we also found that most of the time slots had lower scores, meaning that most time slots will not be ideal for marketing.
+Through our analysis, we found that people are more active during the day and less active at night. We created a score that helped us understand the best times to show ads, hoping to find the optimal time when individuals are inactive but also awake. We gave more importance to sleep, by weighing it more heavily since an individual who is sleeping has no chance to be effected by a marketing advertisement, while someone who is only lightly active might still pay attention.
 
-In future studies, we hope to expand our research to include more variables. One idea to improve our study could be, more participants, allowing us to use independent data rather than averages. Another idea could be to determine what days would be best for marketing, as weekends are likely to yield different results than weekdays. Additionally,  accounting for demographic data might help for targetting specific audiences. Ideal audiences for products vary by individual groups, so accounting for such differences could improve product outreach. Finally, we could collect data over the course of a longer period in order to look at seasonal patterns to determine the best time of year for marketing, as winter and summer likely yield different results.
+After running statistical tests, we concluded that based on opportunity scores it is best to advertise between the hours of 8:00 PM and 10:00 PM. Interestingly, we found that most time slots had lower scores, emphasizing the importance of marketing at opportune times of day.
 
-In conclusion, our study shows that there are significant differences in marketing opportunitys throughout 10-minute intervals of the day. By understanding these patterns, businesses can better target their marketing efforts to reach the largest possible audience.
+In future studies, we hope to expand our research to include more variables. One idea to improve our study could be adding more participants, allowing us to use independent data rather than averages. Another idea could be to determine what days would be best for marketing, as weekends are likely to yield different results than weekdays. Additionally,  accounting for demographic data might help for targeting specific audiences. Ideal audiences for products vary by individual groups, so accounting for such differences could improve product outreach. Finally, we could collect data over the course of a longer period in order to look at seasonal patterns to determine the best time of year for marketing, as winter and summer likely yield different results.
 
-
+In conclusion, our study shows that there are significant differences in marketing opportunity throughout the day. By understanding these patterns, businesses can better plan their marketing efforts to reach the largest possible audience.
 
 ## References
+
+ - Fitbit Data. (n.d.). *Kaggle*. Retrieved from https://www.kaggle.com/arashnic/fitbit
