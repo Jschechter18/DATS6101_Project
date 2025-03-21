@@ -134,6 +134,9 @@ interval_data <- sleep_10min %>%
   left_join(steps_10min, by = c("interval_start")) %>%
   left_join(intensity_10min, by = c("interval_start")) %>%
   left_join(calories_10min, by = c("interval_start"))
+
+# Replace NA values in avg_sleep with 0 to indicate awake periods
+interval_data$avg_sleep[is.na(interval_data$avg_sleep)] <- 0
 ```
 
 # Add day of week
